@@ -1,0 +1,110 @@
+{
+    statusCode: 200,
+    msecs: 58,
+    querylen: 1038,
+    totalmatches: 27242,
+    reads: 684628,
+    response: {
+        results: [
+            {
+                docId: "4-17044680",
+                score: "46.0628",
+                rawscore: "0.0125",
+                meta: {
+                    bayes-industry: "Information & Communication Technology",
+                    bayes-job-salary: "150k+",
+                    date: "1400005089",
+                    description: "The Associate SW Quality Engineer develops, practices, and promotes quality principles throughout the organization to achieve defined customer quality requirements and requ...",
+                    exDate: "1399939200",
+                    exSummary: "Agency: Real Life Sciences Location: United States Salary: US$25 - US$35 per hour Type: Contract/Temporary Posted: 13th May 2014 Description: The Associate SW Quality Engineer develops, practices, and promotes quality principles throughout the org...",
+                    lat: "35.496456056584",
+                    lng: "-95.33935546875",
+                    location: "Technical Support, Warner, OK 74469, USA",
+                    title: "Ass. Software Quality Engineer",
+                    url: "http://www.access-sciencejobs.co.uk/jobs/106745/ass-software-quality-engineer-united-states",
+                    x: "3853",
+                    y: "6462"
+                }
+            },
+            {
+                docId: "4-17048659",
+                score: "45.9663",
+                rawscore: "0.0124",
+                meta: {
+                    bayes-industry: "Information & Communication Technology",
+                    bayes-job-salary: "75-100k",
+                    date: "1399953600",
+                    description: "Details: BorgWarner POSITION SUMMARY The Advanced Engineering (A.E.) group reports directly to Chief Technology Officer of the company. The team is a central focus for the ...",
+                    exSummary: "Job Description BorgWarner POSITION SUMMARY The Advanced Engineering (A. The team is a central focus for the creation of next generation system solutions utilizing the skills and efforts of the various company business units.",
+                    lat: "42.358543917497",
+                    lng: "-83.1005859375",
+                    location: "Detroit, MI, USA",
+                    title: "Advanced Controls Project Leader - (Sr.) Technical Specialist",
+                    url: "http://www.careerbuilder.com/jobseeker/jobs/jobdetails.aspx?siteid=homepage&Job_DID=J3F5HV6060D60NYT1MP&ipath=HPRJ",
+                    x: "4410",
+                    y: "6060"
+                }
+            },
+            {
+                docId: "4-17044338",
+                score: "45.6337",
+                rawscore: "0.0122",
+                meta: {
+                    bayes-industry: "Information & Communication Technology",
+                    bayes-job-salary: "150k+",
+                    date: "1400004060",
+                    description: "USD25 - USD35 per hour: Real Staffing: The Associate SW Quality Engineer develops, practices, and promotes quality principles throughout the organization to achieve defined...",
+                    exDate: "2840140800",
+                    exSummary: "The Associate SW Quality Engineer develops, practices, and promotes quality principles throughout the organization to achieve defined customer quality requirements and required regulatory compliance.",
+                    lat: "49.510943515263",
+                    lng: "21.99462890625",
+                    location: "Europe",
+                    title: "Software Quality Engineer",
+                    url: "http://www.wileyjobnetwork.com/job/684679/ass-software-quality-engineer/?TrackID=1",
+                    x: "9193",
+                    y: "5591"
+                }
+            }
+        ],
+        entities: {
+            Author: [
+                "Hamish Ogilvy"
+            ],
+            CreatedDate: [
+                "1400405289"
+            ],
+            ModifiedDate: [
+                "1400405289"
+            ],
+            dirtyLocations: [
+                "Lane Cove"
+            ],
+            firstNames: [
+                "Hamish"
+            ],
+            lastNames: [
+                "Ogilvy"
+            ],
+            locations: [
+                "Lane Cove NSW, Australia"
+            ],
+            schools: [
+                "Macquarie University",
+            ],
+            skills: [
+                "web analytics",
+                "analytics",
+                "business intelligence",
+                "problem solving",
+                "algorithms",
+                "Project Management",
+                "SQL",
+                "Team Management",
+                "online advertising",
+                "programming",
+                "product development",
+                "R&D"
+            ]
+        }
+    }
+}
