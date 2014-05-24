@@ -321,7 +321,9 @@ Compressing an average sized fingerprint:
 	Sizes (GZIP):  input=57516, output=1390, ratio=0.02, time=1.876026ms 
 	Sizes (ZLIB):  input=57516, output=1378, *ratio=0.02*, time=1.655873ms 
 
-* LZ4 for speed, ZLIB for compression
+* Best compression?
+- LZ4 for speed (10x faster!)
+- ZLIB for compression (Can be less than half the storage of LZ4)
 
 * Closed channel returns false when drained
 - Great for worker pools reading off a single channel, e.g. loading dir of files
@@ -335,6 +337,8 @@ Compressing an average sized fingerprint:
 
 * Very powerful
 - Can create maps and slices of functions
+- Can pass functions on channels
+- Can range over channel groups, etc
 - Leads to very powerful and expressive patterns
 	data.Process("stem", "tokenize", "entities", "summarize")
 

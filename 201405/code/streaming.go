@@ -27,7 +27,7 @@ func StatePass(testsize int) []int {
 // END OMIT
 // START2 OMIT
 func main() {
-	testsize := 1000000
+	testsize := 10000
 	t0 := time.Now()
 	StatePass(testsize)
 	t1 := time.Now()
