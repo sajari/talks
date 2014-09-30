@@ -1,0 +1,57 @@
+Sajari
+Search, match, personalize your data
+01 Jun 2014
+
+Hamish Ogilvy
+hogilvy@sajari.com
+http://www.sajari.com
+@hamishogilvy
+
+* Compression in Golang
+Speed vs compression benchmarks
+
+- GZIP, ZLIB, LZ4, Flate
+- Which is best?
+- Trade offs
+
+* Compression ratio
+.play code/size.go /START OMIT/,/END OMIT/
+
+
+* Winner
+- ZLIB
+
+* Speed (small txt string)
+BenchmarkSimpleLZ4	 		 1000000	      1305 ns/op
+BenchmarkSimpleGZIP	    		5000	    364776 ns/op
+BenchmarkSimpleZLIB	    		5000	    352447 ns/op
+BenchmarkSimpleFlateHigh	   10000	    276300 ns/op
+BenchmarkSimpleFlateFast	   10000	    274621 ns/op
+
+* Speed (1000 structs)
+BenchmarkStructLZ4	 			1000000	      2725 ns/op
+BenchmarkStructGZIP	    		5000	    516773 ns/op
+BenchmarkStructZLIB	    		2000	    542859 ns/op
+BenchmarkStructFlateHigh	    5000	    504276 ns/op
+BenchmarkStructFlateFast	    5000	    524116 ns/op
+
+* Speed (Gob Map)
+BenchmarkMapGobLZ4	  			500000	      5544 ns/op
+BenchmarkMapGobGZIP	    		5000	    434194 ns/op
+BenchmarkMapGobZLIB	    		5000	    444125 ns/op
+BenchmarkMapGobFlateHigh	    5000	    456691 ns/op
+BenchmarkMapGobFlateFast	    5000	    423877 ns/op
+
+* Speed (7MB file)
+BenchmarkFileLZ4	     		100	  10668285 ns/op
+BenchmarkFileGZIP	       		2	 532726886 ns/op
+BenchmarkFileZLIB	       		5	 527193970 ns/op
+BenchmarkFileFlateHigh	       	2	 640043915 ns/op
+BenchmarkFileFlateFast	       	5	 509203897 ns/op
+
+* Winner
+- LZ4 (note: this is a C lib)
+
+* Conclusions
+- Use ZLIB if compression ratio is important
+- But note LZ4 is much faster and has reasonable compression for larger loads.

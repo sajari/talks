@@ -1,0 +1,8 @@
+{
+    "statusCode": 200,
+    "msecs": 2,
+    "response": {
+        "class": "50-75k",
+        "probability": "0.694"
+    }
+}

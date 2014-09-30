@@ -1,0 +1,35 @@
+{
+     "version": "3.0",
+     "terms": {
+          "search": {
+               "pos": 0,
+               "neg": 0
+          },
+          "algorithms": {
+               "pos": 0,
+               "neg": 0
+          },
+          "search algorithms": {
+               "pos": 0,
+               "neg": 0
+          },
+     },
+     "meta": {
+          "bayes-industry": "Information & Communication Technology",
+          "bayes-job-salary": "125-150k",
+          "exDate": "1400029654",
+          "exSummary": "Automatic summary extracted to here"
+     },
+     "entities": {
+          "firstNames": [
+               "Hamish"
+          ],
+          "lastNames": [
+               "Ogilvy"
+          ],
+          "skills": [
+               "algorithms",
+               "Analytics"
+          ]
+     }
+}

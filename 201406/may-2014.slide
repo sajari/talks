@@ -1,0 +1,166 @@
+Sajari
+Search, match, personalize your data
+01 Jun 2014
+
+Hamish Ogilvy
+hogilvy@sajari.com
+http://www.sajari.com
+@hamishogilvy
+
+* What is Sajari?
+A search and recommendation engine.
+
+1. Extract
+2. Match
+3. Learn
+
+* Extract
+- Create structured data from unstructured data
+
+.image images/extract.png
+
+
+* Very fast extraction from documents, free text
+- Language processing
+- Machine learning classification and clustering
+- Entity extraction
+- Document parsing
+
+.link http://www.jojari.com/api/docs/examples/profile-card example meta extraction / classification
+
+_Free_text_to_structured_data_in_a_fraction_of_a_second_
+
+
+* Match
+- Search and recommendations
+
+Example: *Resume* to *job* match scoring
+
+.image images/match-score.png
+
+
+* Custom match scores and personalized results
+- Highly configurable for different problems
+- Classify using machine learning (naive bayes, random forests, etc)
+- Use training data and multivariate regression to create a *matching* *model*, e.g.
+	AB = cosine(text)*0.6 + industry*0.14 + entities*0.11 + distance*0.1 + salary*0.05 
+
+.image images/match-pie.png
+
+
+* Learn
+- Algorithm learns and improves over time
+- Learn from humans (e.g. thumbs up and down, training sets)
+- Learn from data (e.g. price movements), etc
+
+.image images/job-matching.png
+
+
+* Queries can be:
+- user driven, e.g. find a job like my resume
+- user automated, e.g. create custom newspaper based on user behaviour
+- or machine driven, e.g. calculate fraud score based on user profile
+
+
+* Search and recommendations are the same thing
+- Both delivering content to user
+- Search shows *intent*
+- Profile provides *context*
+
+.image images/query+profile.png
+
+
+* "Large queries" more powerful than keywords...
+- Use a facebook *profile* as a query
+- Use twitter posts/retweets to *filter* crap from a users timeline
+- Researchers use their journal articles to find *similar* research work
+- Banks can use known fraudulent activity to assess email fraud *probability* in realtime
+- Newspapers can watch what users read to *teach* Sajari and *personalise* their news
+
+
+* Nailing search
+1. Understand the query (*intent*)
+2. Rank results in the optimal order, and fast (*context*)
+
+
+* Understanding the query
+- "Query understanding" has it's own dept at companies like Linkedin
+
+.image images/linkedin-query.png
+
+.link http://www.slideshare.net/dtunkelang/better-search-through-query-understanding From preso: Daniel Tunkelang - Head of query understanding at Linkedin
+
+
+* Ranking results is a difficult problem
+Millions of matches, how to sort?
+
+- time - recent/first
+- location - near/far
+- numeric - counts/followers/size/revenue/etc
+- feedback - good/bad/spam/important
+- rankings - pagerank/etc
+
+	Combinations of the above? Depends on the application.
+
+_Sajari_assumes_the_ideal_ranking_is_personalised_and/or_configurable_
+
+
+* So how does Sajari work?
+
+
+* Queries become more like arrays
+.code data/query.json
+
+
+* Objects and queries
+- *terms* - unstructured text parsed into an array of terms
+- *meta* - structured data, e.g. numbers, locations, titles, description, etc
+- *entities* - special things, e.g. people, places, skills
+
+Meta is good for filtering, boosting, displaying results, etc. It can be auto extracted, or determined with classifiers. Entities can also be boosted. 
+
+.link http://www.jojari.com/api/docs/examples/profile-card example meta extraction / classification
+
+
+* Profiles also arrays, part of queries, or queries themselves 
+
+- Add a free text search to a profile (positive and negative text)
+	search?profile.id=1&profile.query=true&q=machine learning&profile.neg=java developer, J2EE, J2SE, hadoop
+
+- View the profile
+	profile/get?profile.id=1
+
+- Search without a query!
+	search?profile.id=1
+
+- Can also add locations and/or anything else to meta!
+	search?profile.id=1&meta[credit]=bad&meta[lat]=42.29&meta[lng]=-71.36
+
+
+* Highly configurable
+
+.code data/config.json
+
+
+* Add some machine learning to help with concept space 
+e.g. keywords don't need to match! Predict salary, industry, etc.
+
+.code data/classification.json
+
+Try it out for yourself:
+
+.link http://www.jojari.com/api/docs/examples/text-classification http://www.jojari.com/api/docs/examples/text-classification
+
+
+* Our challenges
+- Large queries. High percentage of data touched for each query
+- Queries are largely unique, can't cache
+- Lots of text / language processing problems
+
+*Example:* 1038 term query, 684k data reads, 27k potential results sorted and returned in 58msec (single node running on i7 2012 macbook pro)
+
+.link http://localhost:9200/collections/jobs/search?fingerprint=eJyknVuT20aStv9KBa%2B%2BL6bd220dVrZv7PBs7E6E7fGOvTEXXl%2BAYJEsNU7Cga32hP77ZgEoHEgq%2BGT5RlK33hcF1CErMysz61%2Bbk60bVxabrzev7h82d5vW1nmz%2BfpfmyRNdjZ3qf93VcqvHu42hT30f1dla4v0ZfP146e7CWiS56TeKeEmPSZFarOsrLVM%2B9Hz5L8tZ6o4R2dPNrdFq8GaJ%2FsC8GXXtKhvB6A5dK5NSBet8OaY1HlZuDQBzBYNgaD8wzMy0BPWNGltbQEpFLzbuVambpIpoCYt8yopwBBdUIwrTjLApJcuuVVdnlyjftuYJgOHzcSZVyeusWBYzxmm6baN%2FdBJoxlpsLFFA5bf7uQFA3mfAShru7K1Y2t7J2KvlfEoDhqsKYvMFarHjxQZf5dqW%2BOc55IIXtu0R4ukTkBO0zcnAzGx1GjTlFnX9tsQpnGKq9M62QMpPgLNzrY29c82VdLIdD1YsAADWUHJDmXt2mPOkfJqjTsUxuVV1m83CeuCiS9vhmbwGcE0NqnTo4IX%2FYZropExzuBCnR6h4WRlSt8wQE1tm7KriZwRKfnSgJk34HrR3bRM5fAUtJhHoJF5WaYOfuwVknm2W04Uvc4rWgcvyFTEQ1keMti1g%2FjIt7bWtVFWrcvdH9Z0aMcLNB1a80ZEK5igMv9SEfi%2BZxuZNRbIj5lLGZXotGAUqsQBUJk5%2BJET1GwTr1ugTpxJDF5lji76GSuCvUUL84JiqhTQZNdo0PwagUb2qGPRf%2FUpqZ3o%2FZyqIDiZLuileqBa7E88heS75HghUNZJsevAzNaIwabp6gRplAFpPnSJzEagCJ8zZFkfuiwRzT2GrBjSkRnV3EwyTSsdjix%2B8lqd7Nc7sV3J28xYc5DXav2r1GDiLHiY0dbSv8B8DkgwqSbopF73b9NVOmpXpM7vBVQ1m7mZOxzbo8wWOwiRMisPqNvDA2QDsu5E5MIlJ%2BqNYzgRnTpSIntFxWrLPEHq2ylxWbIlGlFAml3Sghm7gothsUeGwZrlitbWVW3BUpqI0o6IEke0gUuOzN3coR3pCpfr7RM55gP1rzgyRIhnHdyZTnQLG4EywCeblZXXGotS%2FsmZMXDVYghMDYf5mtUu5jOCOTkyXXqWbEU7GT0t3AgWzK6e4wrpXDjuZwTTFa739QPVZOt1f9JdAagZuV6vZyjsrF2h5e8mR36uNY3uF4GlbGSAm0x%2BJB3rSTvRc2u37d1c3k2GTKiBepRJ1fsQpVE0XwaarpERLXbx7e0mMOqD%2FMUJyvcPcGQIDhT%2BLvCZT7bdJhnqwxEqAue2hryGm6J51lJam9w2j5acMsvs4bY8u6TIOBd%2FoGV7Tqyy5IWtj8DMk1RsoNpZnYSb%2BPoWB4Z5seBAbkHTdr%2FHR36ThlWXxR9gjHuYX%2FGi64L96gxvigQe1Y1Eju92B6CdDTCz7WoxnZLmtiExErTYoGYhT8bI01OIa9t%2FKgLRbxyRxh9AuL0IfvS6wsqTWiamnqcjiG1vGyBGR6B8S%2BXapF%2FNpJ8Cq6zFiqjKone%2FOtEcgG9vYsfhjbcwW0t0q4koZksmZr4lvqurLK%2BWwp030EXBOZZAtVvjvVXW1l3adjXRCwNZN2xxbUgHKHrPo5mOMDHouMpcTbYOuRVnqEkzVyBt7gpH5sKOOsmv0SfntIpd5lvpmV0cW0dKaWd6oA%2FfEDs994fOJyJ8J6KC4KURxWn85ZcU06TOx4jIaohha6m5E6EiOrmWh5b4EtwHpCh6W41XfEGbOPTyHifLptua96K1AZs7cBRw9sq1BWow0hXC2S9oNSBFSXhPvmY%2BVdZgTWPtUyQHiXTtabfg8wrJ1hE4KcQa3X4i6zjUWbZwk03OfeQv0%2FrXPH6XkdkpQDbr%2FJTThbaMJBJUN0ONj74k8XsLiu59avuhc0SrGfFNIuJgdLfWyX4PPFiBqXov%2FnBn9wxlSv9Eq%2FI2DkQV4bYNQf0vI04kQtNaYI2J9oQ29B5m0k5METVcNnLZbXZgkaxpVQKs%2FpGjbGKEG9nWnhNRjBERanox6qxsxghkdl3R1i%2BZTQ6dNYcyA%2FPY03RIvNFrdAjvbUtbkdgKqNnZ1DWoBy85Zi%2F6sKjp5HzkGj1P2P49U%2BManFlmb%2B1um6RPGrrK7v4MjykQ0Derc8iu0EZsHguCJM5I3WHLG4pAe2UGzcHBlsRAjf1Y5rmt0RH2DPU25K4D3p9LiumYlTITMQEdr4UTsiFGAHXpEq%2FwcwTi4uArioRC0D9HpHOgJ9uPrkH%2B2HOCCPeIZuT9iAE2svZlffvIYQlmIa6BofoC1zQdkVcLNA%2F7WdNUK7nnyR7O3DRrvLSkG3x9oMeUgZEUnWxO3pavRRmr24LYQxP5ozTcaFucSTEvrJhI%2FbGw4nN6uDcxiJIZMrCUfabJ2Aoc9XylMQcBrxsGdlA0IY3VPT6zJMppQpp9H3fYrxkFi8MditSdoaPWJSpYB8f4Cs%2FPk0rUJLa5jQ%2BQxZwcWGrpVRaO9l2wFeG%2BV1k0c8CTuxYtNGmgIj3Q40SbyLwX62U8T1Tw%2BPFq4PAm9raGyn6ADjGF%2BID7c0Tj05EQfTj6Qkt1woa2MpDS6Wld1pJj2hk6ZrKJGLcfh5Y05D%2FDUbjMZrKG493zTPAGaB9M64OMYjgiIQsiCSZiOI%2FR8jAerjSP0zphR9aYwEX3qoGkaKMu0dTyuHEiK%2BHaRJlV3IEOTaMOrpFMVdbtvpTpQkZ%2ByVcRYSilMohyDR8sOxLjPqZWUJwykjew1GCNdqnMDUlL5Ak8WelK0oGiq4KI8bRGh4ke1Zt0ACrffUQLJCBZrgR2tWuc5ahlTW4G3kSmncP6AxVfMuHFfOgs0Awn5mAcQgF8laVtEcKpj3p2TMtMaBUu5ok4Hlv0eYhlBivFLNh%2FjhScakBsap3oE17TRJhICqg3nUR25lxOLbi19TtMX30kTUng34ob097AiWlPQyHrvIdBh9oSjF3Q5yRm4I6swt4%2BGZ2h%2FvHvLX8n3Sfc1teDj%2Fqs7AR2WQc%2B%2F2qFP3w0eSlOZepe4XjLwDZtiebgJXuc5vuOGI3hAX%2BaxOLqRyaaECMShXqs0FAvXXNQlNtMiYArltjgYcFA6ifZ2apDAgRZUnEWVGBpT1pHHoeiGaD1fVwwvNVRHdHWPDI5QQz%2BDK2UARiEgJqgmJhnxKYSHWVPIzom%2Bqhw5F6ExD1BTRsKSXGkon7UFY55dsWuOZLMpJmt4dCBHoZJt79r50SPR%2F00IkcPOiUwXVmZVX1OwDHFC2J%2FahRDVFKgHjFrAJNJxLW0JVl0ojE0EZ41nNP1hzLrJ8TUk1k%2Bge7%2FZ4wglyKYER0V%2BW0zTVfwMVa%2FnFnjyW1zdFjynPOiJmQkRz%2FxYuporvjcnr0khaoYCmm35iuCa8%2F4Mc1GdxJfKSQkfYDhaKE1nJdOOuPputqlNnaUPFXDcDXVcwJS41zqOSCsNQAVAUCqSLOoQLFdmXYKK6VssQK0iD5WgVkAst11BAM14dnTrIBCn6%2FNE3BaY4tdUYJgYFghdTy3VB1EXuHQQ8lwTDplb%2BgZ0U3hXA7dWa4tGqKLDjCF6nBO4Gf3F0yVc2pkz05tXascz6O0Zqgm5Kgvks9QrJS%2B%2FWjTjgSgBKDObTWzIgnKcQ7sCBbJuJiQspAy%2FjkzQV7Mtahk3AXzuayf8Dh5HibAKGldnPMKbaYUf8DDpeKxh25yzC3C9GjM6cSlBEVyS0xGyxWO%2F6yXjpi3vJXw6KnI3ujcaP2oEt0q%2FuV0zeCKhRG1BoWSJS8NkOZD%2FCyEiWyzPtq8SIAGdUlZCLcYNgra1cQD70WLJqkJI84c5dEqsMkscd%2BtKBUtkRJYcQVWAltBAGkffbrHWKAadi3ND9mXXbEji3EMvcBAkyU18N%2Bu4TTs4YzViGRQNKVthJwXL8E41eSArCGUuoPsRFiv%2F1DiUn6H8iS7IVJVZ2hEFvGCrCDRKp%2B6qMC%2BjjVD%2BWILrkKZ4md4WPVaU1ObHiqyK6PgLVfqy62OSe6AOjnATHlw2en2pqlonmxGik1ohobCRIwSA8YVjMaKoxTHK3ueE8RWqZGPNhAj8cPf5IsakIlzbHMwsF1O4msHmPH3GFhw1LCG%2B%2FxpYou7nb09sz1IJK%2BMC9hOBFy0%2FPAchq1PYSAcidtfRoRp9uAzqt9nGnt7XK%2FTYlvFUWZnPNwcrPKh35jDMTIGqqJpr5HwWZ%2F6hHsg8P70Amg42i2LbUnOiGYeZ%2BBiKPhSjvlmjfRYigaNTmuvkcTyrHxor4KMCdCCDkB1mvdE1Bjf10j6FjkBCusBx2%2BgPCeg8MkLErxkKfB6EQnHdGAoG9AYyIrq%2FIu6%2FFH1qxd8Luaj7gJwReOQkPcwk9ukQTVWz%2FCi3NWp1w6AJTlS%2FwxDbLLKpzWzoZrCkjRYGm%2BgykFfxTgpo%2FNX3IWPmjgiVtwYQuRrKlmw7lKcF04dOKzIoNZlhMekgV%2FhmKLLbU2qCKzJzDFwhWOaZxC7fo1I4xbPuLg5dMHP8pRCBZ7va4ykqQ4rPvcILo6ijmIUeoJKP8BljlfRm7vl9cKotkxc8OeKpW%2BnL2NT1e5EHIpL5pjBH0GNoCiqRavsMJS%2Fpt3llAWgzvC4sMr7HcJ4Tas6kpzc9%2B72bBOMqRwJeZ%2BQvuf2tmnAwuw5HF126Fh8xE2bjam6Lb5%2BNZBVHFYCk0gfntI1IRVxSprywB47FFdoHLwIIEu2JwdUNZTRz87dNAdn0ltpcttOYN2vLPCgHSmdP0YX0p%2FZZAdj22coy3mkRe20Xg52SKE7n1ih8ZmDCAVbAOE64mDFuPl6VAVUEy5NL4jUVwvMXNF9BKgPndv5GDsSa8QMDKVJsYarBHzWPYGBEVB%2F60tZOxCKlCdpZsHdNSPOVM0LiHBdofHymhxCHKlx6Fwj%2BRRAMhVmLiaQWx1g7ATM3htgZCx7nGlyclufIn5W6VyJiBdcUvwq5r0XDjtQnOyCor1mfEFFe1VEbcNlRVQVWNPNLKoQpsGHi9CObq8Dq65Ci7huLU%2FaI9HGVHVkVSWCsOOYlJVd2v8qMDXir3C8zsKyiFZkFQvdvEjzkkJOWcyN%2Fuo8Nqya5zbfogHwMOSGVXhzWJF8VXH84cJbCNPokBcMdJGt4v5dvBSG2S82H1SvVdWbURpAH%2F0%2F5XLgLABl0gC83pCblZF5RqPzj%2BK8j6EFfbhED3%2Fyd4nFy05MFDqltzPgB%2Be3Es6qnKpKqGrvv8tLX1%2BHqHQjcLCjmNSHDic4aeiwq4Z7ATbIhZW%2FNB9ufzo%2BX4u5ao0o%2BppqKJpos6I8HMBlg6w%2BCbnXyt9pxW5h0dx%2BxScx9jJE%2BRfK7Xt4N9J4HxnFabZ3GINMfZJlkRHtqxQRmxOYIul5ne0M1ulIwK9h%2Bc27EwPF86zQuudTMOw%2F33PEqb7AQv1KGGWf%2Bln7UPbb8K7FVTsW2N7iJlFnVzjsFuarxK7yEdxoqJf0sUhYfwKubZsRYDwwj24rny2YSQIybIWjjbrfoMW0Qs47vpvTuRIxzNTxo6k4xOu1oarQMD5xjEusgCqhCWFEz%2BOBd3ERdzgzpDqCLzoSU6w6goE%2BvjRARLIDelTGU1UFATuCBdiiDFEBvrBPEZjqcr6RogebF1KmcGQwrGJe8isNKhpVWJHkwP4HJhMDcipD4iNnSrT0l9RYCvdnzlwF5dnWVemIeKy9w5E9dYLK5p3juaAI8I9Mq6987S6arLQEj7XRkSyoHdLloNYAHTQ0KEAbDkBzcniUE43i0K%2B2qUpQKAqOi%2FipCwydE2Ka0hFysm3E1uJd6OcaLFPNzwmme6oTYjoviQoO29pn1zZL9dD7wnGApWaG4%2FsTWTiFLoyiIh%2BjcAuNJ%2BAUF3FzXmAq4fS8nBXTExGRPu2dBdn6Q9lSCNMV7vQcMsjU%2Bqxtat2JvOwINChjnFdigGcRPFNAHdk%2F7TQcyeV%2Bbek9iMOyqMkcCMjprpcICr57RXE9ZsyJuV4aiNJoTyR4Q9E76j6heiTWRRQzSl%2B4FtfcUtQeVkZd85BDjxx3Z9BtLNqgbipQjoRduq%2Bx55vkdkciB7bCc60ohRpRypQFsWty3RVZNE1aW%2BDPhSupsRbtkbDaZKgxOVrtvNiktjglLduiLdeCcShMTxNmp%2FAvIGMFn3s1Tw6EuLJAWFp1JpSbafoykrDojLJGjUxCt%2FMlSAmSOZnmeU2NrQuGIv0sYhUFhqoRcokY9bLorPUGleYg58JY12IJyrrMYnpRf4NqsurWhCILlxfV59Mb%2BxBUFh7VQRUOU1UUnf4KOb5E%2BYGkL12TObI4YY0blPMOLRBesAn1H7rCl0s1fc6uwpJoRVdhJ4ctiQBEJW6pY6vPNxNReBuI9GiqEQvuxMISqfuT2RY4g1qAH0BC%2BQAz3jdJAiGhkFaECpLga3RY3yEXmWgLGXOm8TRDuuLo7or0fBQ8QoeVaM00cPH5eFv4%2BTv2ytuvz6%2Figwl4z8TrCIv4g%2FP0T32YfD%2B%2Ft8mLbb6Y68dt%2Flb4qIPBDP%2Ff7uHhy7fm%2BzLPu2JUJc2vs3y%2BG%2Bnvy%2B0XTZL1p6ybxzcPT3%2FZ%2BGr5%2FzHUOB4Ltt4PwZLf9pWP79My%2F%2Ba9y%2B%2F7OIxvT%2Bl9%2FuHe7rr7pPtmCG%2F8doiX9UD%2FS58pej%2B5bb6dzfRmRPQt%2Fuw3g5%2B6ITll85e3j%2Bb142vz9s078%2BrNq2%2F8z1%2Bar969eTDv3r5%2BE37%2B8vEr8%2B7dw0P%2F8yv5r4e35tXrL1%2F1T%2Fyly%2FPhu34ZDHSTmPSY%2BCs1Dv4nmaEmKZLsRTS%2Fxvyb2frlLhrL9SLiJhQJl39elocNJ6jmH8G9%2FZ0flSRzSSG%2FGz1t35ddkbrM%2FFw2rZnKFyfPonOb%2F%2Ffdz9%2F97f%2FfGa8vbXyOu%2Bxnmy9evbp%2F9%2Fju4d8f%2FK%2B8hJExerx%2FfPvm4fHV5pO%2F2sRH8theUHzXycYlnffb5r%2BGMrt%2FH0Jcf7%2FbfF9baWn31151%2Fm3z%2BPrh4fXDmy%2FffeX%2F88dyJ9bG5%2F5XhqhKir6J3zb%2FOZSivtv8NERE%2F95fCdW%2B%2FFAOM6wH%2FeBroX5fnqz%2F772rm%2FanJB%2F4w4v538u8%2B9W12fDr74%2FO7hez0%2Fx9jPu9CyfOq4uX55OZpGm6OvFecfnGpBJ9qpB%2F%2FTydPv%2FeFwuY2597JLv6xuanX%2F55Nw%2BdB3oPVJn1sB%2Bn5Nz%2FmTejoAX8PjoBeuRqaglk%2Be%2Br02z40tVZvLCygyyZ9pg3w0f1J44%2Fzmmyd5tf%2FvsH%2BfNXUQ7Xvx%2BikU2yk7dsh71pHVp6tzrk%2FVw3%2F2OQIn%2F9TI%2F37f4wl1e426x%2B%2BGcvkZvN758%2B%2FV8AAAD%2F%2F7Z6y0w%3D Large query example
+
+
+
+

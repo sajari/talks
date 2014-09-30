@@ -1,0 +1,345 @@
+Sajari Search
+Searching, matching, personalizing
+20 May 2014
+
+Hamish Ogilvy
+hogilvy@sajari.com
+http://www.sajari.com
+@hamishogilvy
+
+* What is Sajari?
+A search and recommendation engine. Now written 100% in Go.
+
+- Large queries like butter (hundreds, even thousands of words)
+- Learns from users == smarter over time
+- Personalised search results
+- Highly concurrent design
+- Distributed design (beta)
+
+
+* Motivations
+- Let people use documents, etc as search queries
+- Find similar information at the speed of keyword searches
+- Find information with better context
+- Personalise results
+- Adaptively learn from users, improve over time
+
+.image images/keyword-doc-mismatch.png
+
+_Typical_approach:_Start_with_lots_of_context,_throw_it_all_away,_then_think_of_some_keywords..._
+
+
+* Why the switch to Go?
+
+* Many, many reasons
+- Development cycle is ~10x faster than for C
+- API easily directly integrated with data storage / processing
+- Highly concurrent code is a breeze to write
+- In built testing just works
+- GC provides some freedom from mem management headaches
+- Python ML / math / science support is huge, but too slow long term
+
+
+* Why not use technology XXXX?
+- Many years of optimising for < 10 word queries
+- Short queries lack context
+- Stiching 1000 index read result sets is computationally difficult:
+	- short keyword queries can early terminate
+- Small and large queries typically treated as separate problems
+- Large queries typically exchange information loss for computation ease (LSA, etc)
+- Freedom from boolean logic is powerful
+
+
+* Assuming small queries limits potential!
+
+
+* "Large queries" more powerful than keywords...
+- Use a facebook *profile* as a query
+- Use twitter posts/retweets to *filter* crap from a users timeline
+- Researchers use their journal articles to find *similar* research work
+- Banks can use known fraudulent activity to assess email fraud *probability* in realtime
+- Newspapers can watch what users read to *teach* Sajari and *personalise* their news
+
+
+* Search and recommendations are the same thing
+- Both delivering content to user
+- Search shows *intent*
+- Profile provides *context*
+
+.image images/query+profile.png
+
+
+* Nailing search
+1. Understand the query (*intent*)
+2. Rank results in the optimal order, and fast (*context*)
+
+
+* Understanding the query
+- "Query understanding" has it's own dept at companies like Linkedin
+
+.image images/linkedin-query.png
+
+.link http://www.slideshare.net/dtunkelang/better-search-through-query-understanding From preso: Daniel Tunkelang - Head of query understanding at Linkedin
+
+
+* Ranking results is a difficult problem
+Millions of matches, how to sort?
+
+- time - recent/first
+- location - near/far
+- numeric - counts/followers/size/revenue/etc
+- feedback - good/bad/spam/important
+- rankings - pagerank/etc
+
+	Combinations of the above? Depends on the application.
+
+_Sajari_assumes_the_ideal_ranking_is_personalised_and/or_configurable_
+
+
+* So how does Sajari work?
+
+
+* Queries become more like arrays
+.code data/query.json
+
+
+* Objects and queries
+- *terms* - unstructured text parsed into an array of terms
+- *meta* - structured data, e.g. numbers, locations, titles, description, etc
+- *entities* - special things, e.g. people, places, skills
+
+Meta is good for filtering, boosting, displaying results, etc. It can be auto extracted, or determined with classifiers. Entities can also be boosted. 
+
+.link http://www.jojari.com/api/docs/examples/profile-card example meta extraction / classification
+
+
+* Profiles also arrays, part of queries, or queries themselves 
+
+- Add a free text search to a profile (positive and negative text)
+	search?profile.id=1&profile.query=true&q=machine learning&profile.neg=java developer, J2EE, J2SE, hadoop
+
+- View the profile
+	profile/get?profile.id=1
+
+- Search without a query!
+	search?profile.id=1
+
+- Can also add locations and/or anything else to meta!
+	search?profile.id=1&meta[lat]=42.29&meta[lng]=-71.36
+
+
+* Highly configurable
+
+.code data/config.json
+
+* Easier to learn from large queries
+.image images/pos-vs-neg.png
+
+fingerprint/weight/{docid}/{pos}/{neg}
+
+
+* Add some machine learning to help with concept space 
+e.g. keywords don't need to match! Predict salary, industry, etc.
+
+.code data/classification.json
+
+Try it out for yourself:
+
+.link http://www.jojari.com/api/docs/examples/text-classification http://www.jojari.com/api/docs/examples/text-classification
+
+* Why are models important for search?
+
+* Custom match scores and personalised results
+- How well does A relate to B?
+- Classify using machine learning (naive bayes, random forests, etc)
+- Use training data and multivariate regression to create a *matching* *model*, e.g.
+	AB = cosine(text)*0.6 + industry*0.14 + entities*0.11 + distance*0.1 + salary*0.05 
+
+.image images/match-pie.png
+
+
+* Query stacking
+- Previous queries influence current query
+- User searches for "job", then "software engineer", then "golang developer"
+
+.image images/query-stacking.png
+Q1 = 1.0 x (job)
+Q2 = 0.5 x (job) + 1.0 x (software engineer)
+Q3 = 0.25 x (job) + 0.5 x (software engineer) + 1.0 * (golang developer)
+
+
+* Our challenges
+- Large queries. High percentage of data touched for each query
+- Queries are largely unique, can't cache
+- Lots of text / language processing problems
+
+*Example:* 1038 term query, 684k data reads, 27k potential results sorted and returned in 58msec (single node running on i7 2012 macbook pro)
+
+.code data/large-query.json
+
+
+* Dealing with billions of objects
+- Reading lots of data efficiently requires lots of testing
+- Understand how slices work, makes a big difference
+- Lots of pointers == big GC pauses
+- Massive maps == locking issues
+
+
+* Reading indexes as fast as possible
+- Don't use channels for *each* read
+- Think through locking approach
+- Design data layout for concurrency
+
+
+* Streaming data via channels
+- Which is faster? How much faster?
+.play code/streaming.go /START OMIT/,/END OMIT/
+
+
+* Channels are great, but know when to use them
+
+
+* Deleting efficiently from a slice
+- Which is both fastest AND GC efficient?
+.code code/slice-delete2.go /START OMIT/,/END OMIT/
+
+* Quick test, 1,000,000 length slice, 10,000 deletions
+- copy1 - 1 min 40 sec and a GC for every delete!
+- copy2 - 17 sec
+- shift - *67* *usec*
+- append - 17.5 sec
+
+_But_note_that_shift_does_not_preserve_order_
+[0 1 2 3 4 5 6 7 8 9] -> [0 1 2 3 *9* 5 6 7 8]
+
+.link https://code.google.com/p/go-wiki/wiki/SliceTricks
+
+* Some simple issues only appear at scale
+
+* Lots of pointers == pain
+- We had a 30 sec GC pause triggering every 60 seconds at one point. *Unusable*
+- "Don't create garbage" is fine in principle, not easy for large data sets
+- Alternate allocation methods?
+
+* Other ways to allocate large amounts of data
+- Bucket storage (reusable slot based slices)
+- cgo
+- mmap
+
+
+* Bucket storage
+- Large maps of map[uint32]*Object are problematic for the GC
+- Use map to slot lookup (slice) instead
+- Reuse deleted slots in the slice
+- Grow the slice only occasionally (reduce mem allocations)
+
+.code code/bucket.go /START OMIT/,/END OMIT/
+
+* Creating a bucket
+.code code/bucket.go /START2 OMIT/,/END2 OMIT/
+
+
+* Extending a bucket
+.code code/bucket.go /START3 OMIT/,/END3 OMIT/
+
+
+* Performance and notes
+- Dropped GC pause for us by ~60%, which was great, still in production (for now)
+- Reflect is a bit messy
+- Loses the simplicity of Go, seems like (and i've been told) it's a hack that should be avoided
+- If you're going to write an allocator like this, may as well mmap
+
+
+* cgo
+- Malloc objects instead. 
+- Pro - Garbage Collector is oblivious
+- Con - Garbage Collector is oblivious
+
+* Performance and notes
+- Efficient, fast and stable
+- We've had heavy production usage for over 6 months
+- We use a linked list, so mem leaks are not such an issue, but beware!
+- Locking design / ownership is again important. 
+- Code is pretty ugly
+
+.code code/cgo-test.go
+
+* Why use mmap?
+- Use file storage and map the files into memory
+- Speed *can* be very close to memory
+- Each file treated as `[]byte`, allocate whatever you like
+- Lets the OS do the smart memory/disk management for you
+- No longer bound by RAM size, but get in memory benefits
+
+
+* Why avoid mmap?
+- It's probably the most annoying Go code i've had to write
+- Representing and converting everything to/from []byte is not fun
+- Non-fixed length structures create fragmentation
+- Potential for data corruption / sync issues
+- Growing beyond file size requires re-mapping
+
+
+* mmap management
+.code code/mmapstore.go /START OMIT/,/END OMIT/
+
+
+* mapping a new file
+.code code/mmapstore.go /START2 OMIT/,/END2 OMIT/
+
+- Write to *store.Slots* (one big []byte)
+- *store.Slots* is flushed to disk on request/remapping/exit, etc
+
+
+* Storing a reverse index
+.code code/rev.go /START OMIT/,/END OMIT/
+
+
+* Performance and notes
+- Performance is very good thus far (yet to be tested with file size > RAM though)
+- SSD's make this approach very attractive, should be able to map 100's GB (spread across multiple files)
+- Still working on non-fixed length version
+
+
+* Conclusions on allocation techniques for large data
+- cgo is the simplest way to get lots of data "off the books"
+- buckets are a hack, but a very useful hack (for now!)
+- mmap is very powerful, but also very complicated. Devil's in the details!
+
+
+* Other useful quick wins at scale
+
+
+* Compression
+Compressing a gob meta map[string]string (about the same as we have for a job)
+	Sizes (LZ4):  input=1162, output=1046, ratio=0.90, *time=99.774us*
+	Sizes (GZIP):  input=1162, output=765, ratio=0.66, time=1.180221ms 
+	Sizes (ZLIB):  input=1162, output=753, *ratio=0.65*, time=1.154014ms 
+
+Compressing an average sized fingerprint:
+	Sizes (LZ4):  input=57516, output=2235, ratio=0.04, *time=184.749us* 
+	Sizes (GZIP):  input=57516, output=1390, ratio=0.02, time=1.876026ms 
+	Sizes (ZLIB):  input=57516, output=1378, *ratio=0.02*, time=1.655873ms 
+
+* Best compression?
+- LZ4 for speed (10x faster!)
+- ZLIB for compression (Can be less than half the storage of LZ4)
+
+* Closed channel returns false when drained
+- Great for worker pools reading off a single channel, e.g. loading dir of files
+- "ok" reads false when BOTH closed and empty
+
+.play code/chan-drain.go /START OMIT/,/END OMIT/
+
+* Functions are first class
+
+.play code/first-functions.go /START OMIT/,/END OMIT/
+
+* Very powerful
+- Can create maps and slices of functions
+- Can pass functions on channels
+- Can range over channel groups, etc
+- Leads to very powerful and expressive patterns
+	data.Process("stem", "tokenize", "entities", "summarize")
+
+
