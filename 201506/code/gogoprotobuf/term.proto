@@ -1,0 +1,35 @@
+package main;
+
+import "github.com/gogo/protobuf/gogoproto/gogo.proto";
+
+option (gogoproto.unmarshaler_all) = true;
+option (gogoproto.sizer_all) = true;
+option (gogoproto.marshaler_all) = true;
+
+message Term {
+	required string TermStr = 1;
+	required uint32 NumDocuments = 2;
+	required int32 NumWords = 3;
+	optional int32 InteractionsPos = 4;
+	optional int32 InteractionsNeg = 5;
+	optional int32 HardcodedScore = 6;
+	optional float Infogain = 7;
+	message Shotgun {
+		required string TermStr = 1;
+	 	required float Potency = 2 [default = 1.0];
+	}
+	repeated Shotgun shotguns = 8;
+	message Clue {
+		required string TermStr = 1;
+		required string ClueStr = 2;
+	 	required float Potency = 3 [default = 1.0];
+	}
+	repeated Clue clues = 9;
+}
+
+message Rev {
+	required int32 DocumentId = 1;
+	required int32 Rank = 2;
+	required int32 InMeta = 3;
+	required int32 Next = 4;
+}

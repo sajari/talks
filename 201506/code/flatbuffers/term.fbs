@@ -1,0 +1,29 @@
+// Test flatbuffers schema for our terms
+
+namespace sjfb;
+
+table Shotgun {
+	Term:string;
+	Potency:float;
+}
+
+table Clue {
+	Term:string;
+	Intro:string;
+	Potency:float;
+}
+
+table Term {
+	TermStr:string;
+	Slot:uint;
+	NumDocuments:uint;
+	NumWords:short;
+	Shotgun:[Shotgun];
+	Clues:[Clue];
+	InteractionPos:short;
+	InteractionNeg:short;
+	HardcodedScore:short;
+	Infogain:float;
+}
+
+root_type Term;

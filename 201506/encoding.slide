@@ -1,0 +1,627 @@
+Binary encoding in Golang
+Tradeoffs, benchmarks and musings
+24 Jun 2015
+
+
+Hamish Ogilvy
+Founder, Sajari
+hogilvy@sajari.com
+https://www.sajari.com
+@hamishogilvy
+
+
+* Why we binary encode?
+- Work with data sets larger than available memory (mmap)
+- Reduce GC pause for large data sets
+- Save and read structured data direct to/from disk (at close to RAM speed)
+
+e.g. 
+
+	type Whatever struct {
+		...
+	}
+
+convert to:
+
+	[]byte
+
+
+* Our binary encoding goals (not for everyone!)
+- Fast
+- Faster!
+- Space efficient
+- Partial record direct access without full decode
+- Implement as interface
+
+
+* Considerations
+- Data format relatively static, rarely changes
+- Very high read and write throughput
+- Typically encode/decode single records (e.g. small sizes)
+- Want random access reads without full decode. e.g. data[offset:]
+
+.image images/brick.png
+
+* Not as important (to us)
+- Portability
+- Standards
+- Self-describing
+- Variable data structures
+- Security
+- Compression
+- Sending over the wire
+
+
+* Options
+- builtins (encoding/binary, encoding/gob)
+- Reflection / field tag based packages
+- Compiled & Zero copy packages
+- Roll our own
+
+
+* Use case
+- Find documents with greatest cosine similarity in 500k document set
+- Search query is a document with ~1000 terms, meta parameters, filters, etc
+- Desired maximum response time ~100 msec (single node)
+
+.image images/vector-space.png 300 _
+
+* To achieve our goal:
+- Sample query reads ~1 million reverse indexes, 350k matching documents, 350k meta lookups
+- Data all stored in []byte mmap files
+
+~ 1.75 million records to read in 100 msec. Requires:
+60 nsec / read (1 CPU)
+460 nsec / read (8 CPU)
+
+Faster decoding, more CPU's, or read less stuff?
+- Already read less where possible 
+- More CPU's can assist (until IO bound) 
+- Faster decoding is free
+
+* Read speed impacts end users the most
+- Write request typically updates *hundreds* of records
+- Read request can read *millions* of records
+
+.image images/read-vs-total.png 475 _
+
+* Encoder options
+
+* builtin: encoding/binary
+- Simple and easy "favors simplicity over efficiency"
+- Supports variable data structures, your code is the structure
+- Uses reflection, hence not the fastest
+- No version control
+- Not self describing
+- Fixed size fields only
+
+	buf := new(bytes.Buffer)
+	if err := binary.Write(buf, binary.LittleEndian, YourStruct); err != nil {
+		fmt.Println("Doh! ", err)
+	}
+	return buf.Bytes()
+
+* builtin: encoding/gob
+- Good for streams of data, repeating structures
+- Self describing, no schema needed
+- Your code is again your structure
+- Designed for Go, very language centric
+- Has some binary overhead
+
+	buf := new(bytes.Buffer)
+	enc := gob.NewEncoder(buf)
+
+	if err := enc.Encode(&YourStruct); err != nil {
+		fmt.Println("Doh! ", err)
+	}
+
+* External package comparison
+
+* At least 15 packages out there
+Typically use one of several approaches:
+
+1. Field tags / reflection
+
+- very simple, minimal code changes
+
+2. Compiled from your structs
+
+- requires compiling, but again minimal code changes
+- data is encoded and decoded to/from your structs
+
+3. Custom schema, compiled
+
+- schema files, code generation, etc. Adds complexity
+- your structs are gone, you get binary objects and a bunch of methods 
+
+* Is compiling worth the effort?
+
+
+* Benchmarks
+Below benchmarks graciously compiled by @alecthomas
+[[https://github.com/alecthomas/go_serialization_benchmarks][github.com/alecthomas/go_serialization_benchmarks]]
+
+	type A struct {
+	    Name     string
+	    BirthDay time.Time
+	    Phone    string
+	    Siblings int
+	    Spouse   bool
+	    Money    float64
+	}
+
+	benchmark                                  	iter        time/iter   bytes alloc          allocs
+	---------                                  	----        ---------   -----------          ------
+	BenchmarkVmihailencoMsgpackMarshal          1000000       2376 ns/op      352 B/op        5 allocs/op
+	BenchmarkVmihailencoMsgpackUnmarshal        1000000       2380 ns/op      347 B/op       13 allocs/op
+	BenchmarkJsonMarshal                         500000       3501 ns/op      584 B/op        7 allocs/op
+	BenchmarkJsonUnmarshal                       300000       5553 ns/op      447 B/op        8 allocs/op
+	BenchmarkBsonMarshal                         500000       2347 ns/op      504 B/op       19 allocs/op
+	BenchmarkBsonUnmarshal                       500000       2596 ns/op      296 B/op       22 allocs/op
+	BenchmarkVitessBsonMarshal                  1000000       1735 ns/op     1168 B/op        4 allocs/op
+	BenchmarkVitessBsonUnmarshal                1000000       1036 ns/op      224 B/op        4 allocs/op
+
+* Benchmarks continued	
+	BenchmarkGobMarshal                          200000      10662 ns/op     1688 B/op       35 allocs/op
+	BenchmarkGobUnmarshal                         30000      49289 ns/op    17493 B/op      377 allocs/op
+	BenchmarkXdrMarshal                          500000       2821 ns/op      520 B/op       24 allocs/op
+	BenchmarkXdrUnmarshal                       1000000       2163 ns/op      271 B/op       12 allocs/op
+	BenchmarkUgorjiCodecMsgpackMarshal           500000       4096 ns/op     1905 B/op       10 allocs/op
+	BenchmarkUgorjiCodecMsgpackUnmarshal         500000       3770 ns/op     1840 B/op       14 allocs/op
+	BenchmarkUgorjiCodecBincMarshal              300000       4066 ns/op     1938 B/op       10 allocs/op
+	BenchmarkUgorjiCodecBincUnmarshal            500000       4004 ns/op     2000 B/op       17 allocs/op
+	BenchmarkSerealMarshal                       300000       4857 ns/op     1360 B/op       26 allocs/op
+	BenchmarkSerealUnmarshal                     500000       4287 ns/op      972 B/op       37 allocs/op
+	BenchmarkBinaryMarshal                      1000000       2440 ns/op      408 B/op       19 allocs/op
+	BenchmarkBinaryUnmarshal                    1000000       2339 ns/op      416 B/op       24 allocs/op
+	BenchmarkMsgpMarshal                        3000000        447 ns/op      144 B/op        1 allocs/op
+	BenchmarkMsgpUnmarshal                      3000000        584 ns/op      112 B/op        3 allocs/op
+	BenchmarkGoprotobufMarshal                  2000000        971 ns/op      312 B/op        4 allocs/op
+	BenchmarkGoprotobufUnmarshal                1000000       1220 ns/op      432 B/op        9 allocs/op
+	BenchmarkGogoprotobufMarshal               10000000        229 ns/op       64 B/op        1 allocs/op
+	BenchmarkGogoprotobufUnmarshal              5000000        323 ns/op      112 B/op        3 allocs/op
+	BenchmarkFlatbuffersMarshal                 3000000        523 ns/op        0 B/op        0 allocs/op
+	BenchmarkFlatBuffersUnmarshal              30000000       53.4 ns/op        0 B/op        0 allocs/op
+	BenchmarkProtobufMarshal                    1000000       1452 ns/op      232 B/op        9 allocs/op
+	BenchmarkProtobufUnmarshal                  1000000       1111 ns/op      192 B/op       10 allocs/op
+
+
+* Benchmark conclusions
+- Compiled encoders easily outperform others
+- gogoprotobuf great encoding and decoding performance
+- flatbuffers easily fastest decoding (6x gogoprotobuf, but slower to encode)
+- gogoprotobuf ~11x faster to encode than encoding/binary
+- flatbuffers ~44x faster to decode than encoding/binary
+
+Other notes: 
+- misleading use case for gob
+- missing capnproto (similar to flatbuffers)
+- features are different, benchmarks vary with use cases, do your own benchmarks
+- flatbuffers does zero allocations???
+
+* So back to our use case
+- We want speed so we'll focus on compiled encoders.
+- specifically capnproto and flatbuffers
+
+Note: 
+For many applications gogoprotobuf would be a great choice. We won't focus on it because it doesn't support random access reads
+
+
+* Cap-n-Proto
+- Built by Kenton Varda (primary author of protobuf v2)
+- RPC built in (but not supported for Go yet)
+
+.image images/varda-comparison.png 450 _
+
+* Cap-n-Proto using Golang
+
+	$ go get -u -t github.com/glycerine/go-capnproto
+	$ cd $GOPATH/src/github.com/glycerine/go-capnproto
+	$ make
+
+Schemas look like:
+
+	struct ClueCapn { 
+	   partitionID  @0:   UInt16; 
+	   slot         @1:   UInt32; 
+	} 
+
+	struct ShotgunCapn { 
+	   partitionID  @0:   UInt16; 
+	   slot         @1:   UInt32; 
+	} 
+
+	struct TermCapn { 
+	   termStr          @0:   Text; 
+	   slot             @1:   UInt32; 
+	   numDocuments     @2:   UInt32; 
+	   numWords         @3:   UInt8; 
+	   shotgun          @4:   List(ShotgunCapn); 
+	   clues            @5:   List(ClueCapn); 
+	   interactionsPos  @6:   UInt16; 
+	   interactionsNeg  @7:   UInt16; 
+	   hardcodedScore   @8:   Int8; 
+	   infogain         @9:   Float32; 
+	} 
+
+* Cap-n-proto compiled boilerplate
+Autogenerated from a custom schema
+
+	capnp compile -ogo schema.capnp
+
+Produces your Go code...	
+
+	C "github.com/glycerine/go-capnproto"
+
+	type TermCapn C.Struct
+
+	func NewTermCapn(s *C.Segment) TermCapn          { return TermCapn(s.NewStruct(24, 3)) }
+	func NewRootTermCapn(s *C.Segment) TermCapn      { return TermCapn(s.NewRootStruct(24, 3)) }
+	func AutoNewTermCapn(s *C.Segment) TermCapn      { return TermCapn(s.NewStructAR(24, 3)) }
+	func ReadRootTermCapn(s *C.Segment) TermCapn     { return TermCapn(s.Root(0).ToStruct()) }
+	func (s TermCapn) TermStr() string               { return C.Struct(s).GetObject(0).ToText() }
+	func (s TermCapn) SetTermStr(v string)           { C.Struct(s).SetObject(0, s.Segment.NewText(v)) }
+	func (s TermCapn) Slot() uint32                  { return C.Struct(s).Get32(0) }
+	func (s TermCapn) SetSlot(v uint32)              { C.Struct(s).Set32(0, v) }
+	func (s TermCapn) NumDocuments() uint32          { return C.Struct(s).Get32(4) }
+	func (s TermCapn) SetNumDocuments(v uint32)      { C.Struct(s).Set32(4, v) }
+	...
+
+
+* Cap-n-proto schema auto generation using bambam
+To avoid departure from your original Go structs
+
+[[https://github.com/glycerine/bambam][github.com/glycerine/bambam]]
+
+Run bambam and your encoding/decoding code will be auto generated
+
+	bambam -o="." -X -p="main" -debug  capn.go
+
+Your structs end up tagged
+
+	type Term struct {
+		TermStr         string    `capid:"0"`
+		Slot            uint32    `capid:"1"`
+		NumDocuments    uint32    `capid:"2"`
+		...
+	}
+
+Note: Does *not* support triple nesting or maps
+
+* Cap-n-proto (using bambam) performance
+Using our *Term* struct
+
+	BenchmarkCapNEncodeTerm	   50000	     24278 ns/op	    8848 B/op
+	BenchmarkCapNDecodeTerm	  200000	     11857 ns/op	    2800 B/op
+
+Slice of 1000x *Rev* struct
+	
+	BenchmarkCapNEncodeRev1000	    5000	    379908 ns/op
+	BenchmarkCapNDecodeRev1000	   10000	    238916 ns/op
+
+Notes:
+- Boilerplate on boilerplate is annoying
+- Decode boilerplate uses bytes.Buffer, not efficient for small structs
+- Not the smartest way to use cap-n-proto, completely negates benefits of zero-copy
+
+* Cap-n-proto zero copy
+- Give up your structs. Use the Cap-n-proto object instead
+
+	type Object struct {
+		Segment *Segment
+		off     int // in bytes
+		length  int
+		datasz  int // in bytes
+		ptrs    int
+		typ     ObjectType
+		flags   uint
+	} 
+
+Your data is essentially packed into the segments.
+
+
+
+* Cap-n-proto zero-copy performance
+Using our *Term* struct
+
+	BenchmarkCapNZeroEncodeTerm	   50000	     24138 ns/op	    8848 B/op	       6 allocs/op
+	BenchmarkCapNZeroDecodeTerm	 3000000	       641 ns/op	      88 B/op	       3 allocs/op
+
+- Encoding struct --> []byte same performance
+- Decoding much faster (>20x), but you don't get your struct back, you get an object that wraps the []byte and a bunch of methods. e.g.
+
+	func (s TermCapn) TermStr() string               { return C.Struct(s).GetObject(0).ToText() }
+	func (s TermCapn) SetTermStr(v string)           { C.Struct(s).SetObject(0, s.Segment.NewText(v)) }
+
+- Zero-copy Golang version does need to allocate
+
+
+* Flatbuffers
+- Created at Google for performance critical applications (games etc)
+
+[[https://github.com/google/flatbuffers][github.com/google/flatbuffers]]
+
+- Similar to cap-n-proto, data can be read directly without a packing/unpacking step, e.g. no intermediate allocations are required.
+- Reduced set of schema types: 
+	8 bit: byte ubyte bool
+	16 bit: short ushort
+	32 bit: int uint float
+	64 bit: long ulong double
+	string
+	vector (denoted with [type])
+
+Intro "how to" preso for Golang:
+
+[[https://www.hakkalabs.co/articles/flatbuffers-golang-fast-fun-serialization][hakkalabs.co/articles/flatbuffers-golang-fast-fun-serialization]]
+
+* Flatbuffers schema
+
+	namespace sjfb;
+
+	table Shotgun {
+		Term:string;
+		Potency:float;
+	}
+
+	table Clue {
+		Term:string;
+		Intro:string;
+		Potency:float;
+	}
+
+	table Term {
+		TermStr:string;
+		Slot:uint;
+		NumDocuments:uint;
+		NumWords:short;
+		Shotgun:[Shotgun];
+		Clues:[Clue];
+		InteractionPos:short;
+		InteractionNeg:short;
+		HardcodedScore:short;
+		Infogain:float;
+	}
+
+	root_type Term;
+
+* Flatbuffers compiler
+
+Compile "flatc" using CMake.
+
+You can then compile your schema files
+
+	flatc -g term.fbs
+
+This generates Go code for you
+
+	package sjfb
+
+	import (
+		flatbuffers "github.com/google/flatbuffers/go"
+	)
+	type Term struct {
+		_tab flatbuffers.Table
+	}
+
+	func GetRootAsTerm(buf []byte, offset flatbuffers.UOffsetT) *Term {
+		n := flatbuffers.GetUOffsetT(buf[offset:])
+		x := &Term{}
+		x.Init(buf, n + offset)
+		return x
+	}
+
+	func (rcv *Term) Init(buf []byte, i flatbuffers.UOffsetT) {
+		rcv._tab.Bytes = buf
+		rcv._tab.Pos = i
+	}
+
+	func (rcv *Term) TermStr() []byte {
+		o := flatbuffers.UOffsetT(rcv._tab.Offset(4))
+		if o != 0 {
+			return rcv._tab.ByteVector(o + rcv._tab.Pos)
+		}
+		return nil
+	}	
+
+* Flatbuffers benchmarks full encode/decode
+Using simple *Term* struct (e.g. no nested structs)
+
+	BenchmarkFBEncodeSimpleTerm	  300000	      3976 ns/op	     584 B/op	      13 allocs/op
+	BenchmarkFBDecodeSimpleTerm	 2000000	       743 ns/op	      48 B/op	       1 allocs/op
+
+vs Cap-n-proto 
+
+	BenchmarkCapNEncodeSimpleTerm	  100000	     21845 ns/op	    8608 B/op	       6 allocs/op
+	BenchmarkCapNDecodeSimpleTerm	  200000	      8735 ns/op	    2464 B/op	       9 allocs/op
+
+
+Flatbuffers is faster for full encode/decode
+
+
+* Flatbuffers downsides
+
+- Code is really complicated for nested structs. Boilerplate doesn't handle this. 
+- Bottom up style loading, leaf nodes built first, etc. Opposite of normal thinking
+- Difficult to find Golang examples currently 
+- API will probably change, buffer re-use etc could be better
+
+But it is very very quick!
+
+
+* Roll our own
+
+- Build specifically around our data structure
+- Allow for future changes, but handle globally at a storage, not message level
+- Allow zero-copy style access, but also support full decode to Go structs
+- Support maps
+- Omit bounds checks, etc. Simplify as much as possible.
+
+
+* What does it look like?
+
+A custom binary package to support low level stuff (flatbuffers does the same)
+	
+	package bin
+
+	import (
+		"math"
+	)
+
+	const (
+		MAP_KEYSIZE_UINT16 = 2 // space needed to encode a uint16 length key
+		MAP_KEYSIZE_UINT32 = 4 // space needed to encode a uint32 length key
+	)
+
+	func GetUint16(buf []byte) (n uint16) {
+		n |= uint16(buf[0])
+		n |= uint16(buf[1]) << 8
+		return
+	}
+	func WriteUint16(buf []byte, n uint16) {
+		buf[0] = byte(n)
+		buf[1] = byte(n >> 8)
+	}
+
+* We also include Go maps, etc
+
+	func EncodeMapStringString(data []byte, meta map[string]string, keysize int) {
+		count := len(meta)
+		total := 0
+		for key, val := range meta {
+			total += len(key) + len(val)
+		}
+
+		var doffset int // Data writing starts here
+		switch keysize {
+		case MAP_KEYSIZE_UINT16:
+			WriteUint16(data[0:], uint16(count)) // Write the count
+			doffset = keysize + count*keysize*2  // Actual data starts here
+		case MAP_KEYSIZE_UINT32:
+			WriteUint32(data[0:], uint32(count)) // Write the count
+			doffset = keysize + count*keysize*2  // Actual data starts here
+		}
+
+		i := 0
+		for key, val := range meta {
+			WriteUint16(data[keysize+i*keysize*2:], uint16(len(key)))         // Write the length of the meta key
+			WriteUint16(data[keysize+keysize+i*keysize*2:], uint16(len(val))) // Write the length of the meta val
+
+			// Write the key
+			copy(data[doffset:], []byte(key))
+			doffset += len(key)
+
+			// Write the val
+			copy(data[doffset:], []byte(val))
+			doffset += len(val)
+			i++
+		}
+	}
+
+* Each "message" is a package
+
+- The package defines the "table" equivalent for fixed size elements  (see below)
+- Fixed size elements are written first (faster for direct reads without decoding)
+- Files storing the data are versioned, the package knows how to read each version
+
+	const (
+		FIXED_SIZE  = 22
+		REV_SLOT    = 0
+		NUM_DOCS    = 4
+		INTER_POS   = 8
+		INTER_NEG   = 10
+		INFO_GAIN   = 12
+		HARDCODED   = 16
+		NUM_WORDS   = 17
+		NUM_SHOTGUN = 18
+		NUM_CLUES   = 19
+		LENGTH      = 20
+		STRING      = 22
+	)
+
+* Encode handles multiple versions
+
+	func (term *Term) Encode(version string) []byte {
+		var data []byte
+
+		switch version {
+		case CURRENT_VERSION:
+			size := FIXED_SIZE + len(term.TermStr)
+			shotSize := 0
+			// Find length of shotgun and clues first
+			if len(term.Shotgun) > 0 {
+				for _, shot := range term.Shotgun {
+					shotSize += len(shot.Term) + 6
+				}
+				size += shotSize
+			}
+			if len(term.Clues) > 0 {
+				for _, clue := range term.Clues {
+					size += len(clue.Term) + len(clue.Intro) + 8
+				}
+			}
+			data = make([]byte, size)
+			bin.WriteUint32(data[REV_SLOT:], term.RevSlot)
+			bin.WriteUint32(data[NUM_DOCS:], term.NumDocuments)
+			bin.WriteUint16(data[INTER_POS:], term.InteractionsPos)
+			bin.WriteUint16(data[INTER_NEG:], term.InteractionsNeg)
+
+* Pros to this approach
+- Encoding happens inline (fast)
+- Encoded allocation is calculated upfront (very few allocs)
+- Table pointers (e.g. offsets) are global (saves space)
+- Encode function supports multiple versions (conversion is simple)
+- Supports direct access, or full decoding
+- Supports maps (all types really)
+
+* Cons to this approach
+- Needs good tests (offsets are handcoded, not generated)
+- Bounds checking not handled (insecure, etc)
+- Schema updates less graceful
+- Doesn't handle streams (yet)
+
+
+* Custom benchmarks
+
+	BenchmarkEncodeTerm	 		1000000	      1513 ns/op	     256 B/op	       8 allocs/op
+	BenchmarkDecodeTerm	 		1000000	      1645 ns/op	     224 B/op	       9 allocs/op
+	BenchmarkEncodeSimpleTerm	2000000	       663 ns/op	     128 B/op	       2 allocs/op
+	BenchmarkDecodeSimpleTerm	5000000	       275 ns/op	      48 B/op	       1 allocs/op
+
+- 6x faster full encoding than flatbuffers
+- 3x faster full decoding than flatbuffers
+
+* Compare packing size
+
+	custom: 		 140 bytes (full Term) and 68 bytes (simple Term) 
+	cap-n-proto: 	360 bytes (full Term) and 112 bytes (simple Term)  
+	flatbuffers: 	??? bytes (full Term) and 128 bytes (simple Term)
+
+- We can easily save space as we only encode what we need.
+
+* Back to our example
+Reverse index reads are our biggest expense. Cap-n-proto took ~240 nsec per Rev read. Custom benchmark:
+
+	BenchmarkEncodeRev	20000000	       103 ns/op	       8 B/op	       1 allocs/op
+	BenchmarkDecodeRev	100000000	        19.9 ns/op	       0 B/op	       0 allocs/op
+
+Other reads:
+
+	BenchmarkDecodeDocument	50000000	        30.0 ns/op
+
+1,000,000 * 20 nsec  = 20 msec
+  350,000 * 30 nsec  = 11 msec
+  350,000 * 300 nsec = 105 msec (180 - 600nsec variable)
+
+Potential (single CPU) minimum close to 135 msec (~80 nsec average read) 
+
+
+* Summary
+- Cap-n-proto well suited to streams. Fast decoding (zero-copy), moderate speed (other languages likely faster than Go implementation)
+- Flatbuffers is amazingly fast. Super promising
+- Go libs and code generators add overhead and reduce performance
+- The lines of code required to write your own might be less than using a package
+- Certain applications are better off writing their own binary encoder
+
+
+
+
