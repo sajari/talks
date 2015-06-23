@@ -582,8 +582,8 @@ A custom binary package to support low level stuff (flatbuffers does the same)
 
 * Custom benchmarks
 
-	BenchmarkEncodeTerm	 		1000000	      1513 ns/op	     256 B/op	       8 allocs/op
-	BenchmarkDecodeTerm	 		1000000	      1645 ns/op	     224 B/op	       9 allocs/op
+	BenchmarkEncodeTerm	 	1000000	      1513 ns/op	     256 B/op	       8 allocs/op
+	BenchmarkDecodeTerm	 	1000000	      1645 ns/op	     224 B/op	       9 allocs/op
 	BenchmarkEncodeSimpleTerm	2000000	       663 ns/op	     128 B/op	       2 allocs/op
 	BenchmarkDecodeSimpleTerm	5000000	       275 ns/op	      48 B/op	       1 allocs/op
 

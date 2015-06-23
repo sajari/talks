@@ -83,7 +83,7 @@ func BenchmarkFlatbuffersDecodeSimpleTerm(b *testing.B) {
 	}
 }
 
-func TestCapNDecodeTerm(t *testing.T) {
+func TestFlatbuffersNDecodeTerm(t *testing.T) {
 	encoded := term.Encode("")
 	term2 := new(Term)
 	term2.Decode("", encoded)
@@ -96,7 +96,6 @@ func TestCapNDecodeTerm(t *testing.T) {
 	fmt.Printf("Encoded Length (simple): %v\n", len(simple_encoded))
 }
 
-/*
 func TestEncodeTerm(t *testing.T) {
 	encoded := term.Encode(CURRENT_VERSION)
 
@@ -130,28 +129,27 @@ func TestEncodeTerm(t *testing.T) {
 		t.Errorf("Failed to encode and decode doc Infogain. Got %v, expected %v", term2.Infogain, term.Infogain)
 	}
 
-		// Shotgun
-		if len(term.Shotgun) != len(term2.Shotgun) {
-			t.Errorf("Failed. Shotgun count has changed after decode")
-		} else {
-			if term.Shotgun[1].Term != term2.Shotgun[1].Term {
-				t.Errorf("Failed to encode and decode doc Shotgun term. Got %v, expected %v", term2.Shotgun[1].Term, term.Shotgun[1].Term)
-			}
-			if term.Shotgun[1].Potency != term2.Shotgun[1].Potency {
-				t.Errorf("Failed to encode and decode doc Shotgun potency. Got %v, expected %v", term2.Shotgun[1].Potency, term.Shotgun[1].Potency)
-			}
+	// Shotgun
+	if len(term.Shotgun) != len(term2.Shotgun) {
+		t.Errorf("Failed. Shotgun count has changed after decode")
+	} else {
+		if term.Shotgun[1].Term != term2.Shotgun[1].Term {
+			t.Errorf("Failed to encode and decode doc Shotgun term. Got %v, expected %v", term2.Shotgun[1].Term, term.Shotgun[1].Term)
 		}
-
-			// Clues
-			if term.Clues[1].Term != term2.Clues[1].Term {
-				t.Errorf("Failed to encode and decode doc Clue term. Got %v, expected %v", term2.Clues[1].Term, term.Clues[1].Term)
-			}
-			if term.Clues[1].Intro != term2.Clues[1].Intro {
-				t.Errorf("Failed to encode and decode doc Clue intro. Got %v, expected %v", term2.Clues[1].Intro, term.Clues[1].Intro)
-			}
-			if term.Clues[1].Potency != term2.Clues[1].Potency {
-				t.Errorf("Failed to encode and decode doc Clue potency. Got %v, expected %v", term2.Clues[1].Potency, term.Clues[1].Potency)
-			}
-
+		if term.Shotgun[1].Potency != term2.Shotgun[1].Potency {
+			t.Errorf("Failed to encode and decode doc Shotgun potency. Got %v, expected %v", term2.Shotgun[1].Potency, term.Shotgun[1].Potency)
+		}
+	}
+	/*
+		// Clues
+		if term.Clues[1].Term != term2.Clues[1].Term {
+			t.Errorf("Failed to encode and decode doc Clue term. Got %v, expected %v", term2.Clues[1].Term, term.Clues[1].Term)
+		}
+		if term.Clues[1].Intro != term2.Clues[1].Intro {
+			t.Errorf("Failed to encode and decode doc Clue intro. Got %v, expected %v", term2.Clues[1].Intro, term.Clues[1].Intro)
+		}
+		if term.Clues[1].Potency != term2.Clues[1].Potency {
+			t.Errorf("Failed to encode and decode doc Clue potency. Got %v, expected %v", term2.Clues[1].Potency, term.Clues[1].Potency)
+		}
+	*/
 }
-*/

@@ -1,7 +1,7 @@
 package main
 
 import (
-	//"fmt"
+	"fmt"
 	flatbuffers "github.com/google/flatbuffers/go"
 	"talks/201506/code/flatbuffers/sjfb"
 )
@@ -39,38 +39,50 @@ type Clue struct {
 func (term *Term) Encode(version string) []byte {
 	builder := flatbuffers.NewBuilder(0)
 
-	// Preprocess the shotguns
+	// Preprocess the strings
 	shotguns := make([]flatbuffers.UOffsetT, len(term.Shotgun))
+	shotgunStrs := make([]flatbuffers.UOffsetT, len(term.Shotgun))
+	for i := 0; i < len(term.Shotgun); i++ {
+		shotgunStrs[i] = builder.CreateString(term.Shotgun[i].Term)
+	}
+	clueStrs := make([]flatbuffers.UOffsetT, len(term.Clues))
+	introStrs := make([]flatbuffers.UOffsetT, len(term.Clues))
+	for i := 0; i < len(term.Clues); i++ {
+		clueStrs[i] = builder.CreateString(term.Clues[i].Term)
+		introStrs[i] = builder.CreateString(term.Clues[i].Intro)
+	}
+
+	// Preprocess the shotguns
 	for i := 0; i < len(term.Shotgun); i++ {
 		sjfb.ShotgunStart(builder)
-		sjfb.ShotgunAddTerm(builder, builder.CreateString(term.Shotgun[i].Term))
+		sjfb.ShotgunAddTerm(builder, shotgunStrs[i])
 		sjfb.ShotgunAddPotency(builder, term.Shotgun[i].Potency)
 		shotguns[i] = sjfb.ShotgunEnd(builder)
 	}
 	sjfb.TermStartShotgunVector(builder, len(term.Shotgun))
-	for i := len(term.Shotgun) - 1; i >= 0; i-- {
+	for i := 0; i < len(term.Shotgun); i++ {
 		builder.PrependUOffsetT(shotguns[i])
 	}
 	shotgun_vec := builder.EndVector(len(term.Shotgun))
+
 	// Preprocess the clues
 	clues := make([]flatbuffers.UOffsetT, len(term.Clues))
-	//for i := len(term.Clues) - 1; i >= 0; i-- {
 	for i := 0; i < len(term.Clues); i++ {
 		sjfb.ClueStart(builder)
-		sjfb.ClueAddTerm(builder, builder.CreateString(term.Clues[i].Term))
-		sjfb.ClueAddIntro(builder, builder.CreateString(term.Clues[i].Intro))
+		sjfb.ClueAddTerm(builder, clueStrs[i])
+		sjfb.ClueAddIntro(builder, introStrs[i])
 		sjfb.ClueAddPotency(builder, term.Clues[i].Potency)
 		clues[i] = sjfb.ClueEnd(builder)
 	}
 	sjfb.TermStartCluesVector(builder, len(term.Clues))
-	for i := len(term.Clues) - 1; i >= 0; i-- {
+	for i := 0; i < len(term.Clues); i++ {
 		builder.PrependUOffsetT(clues[i])
 	}
 	clues_vec := builder.EndVector(len(term.Clues))
-	// Start packing the final term
-	sjfb.TermStart(builder)
 
+	// Start packing the final term
 	termStr := builder.CreateString(term.TermStr)
+	sjfb.TermStart(builder)
 	sjfb.TermAddTermStr(builder, termStr)
 	sjfb.TermAddSlot(builder, term.Slot)
 	sjfb.TermAddNumDocuments(builder, term.NumDocuments)
@@ -98,18 +110,17 @@ func (term *Term) Decode(version string, data []byte) {
 	term.NumDocuments = t.NumDocuments()
 	term.NumWords = uint8(t.NumWords())
 
-	//fmt.Println("LEN: ", t.ShotgunLength())
-
-	term.Shotgun = make([]Shotgun, t.ShotgunLength())
+	fmt.Println("LEN: ", t.ShotgunLength())
 	/*
+		term.Shotgun = make([]Shotgun, t.ShotgunLength())
 		shotvecs := make([]*sjfb.Shotgun, t.ShotgunLength())
 		for i := 0; i < t.ShotgunLength(); i++ {
-			t.Shotgun(shotvecs[i], i)
-			term.Shotgun[i].Term = string(shotvecs[i].Term())
-			term.Shotgun[i].Potency = shotvecs[i].Potency()
+			if ok := t.Shotgun(shotvecs[i], i); ok {
+				term.Shotgun[i].Term = string(shotvecs[i].Term())
+				term.Shotgun[i].Potency = shotvecs[i].Potency()
+			}
 		}
 	*/
-
 	//term.Clues = t.Clues(obj, j)
 
 	term.InteractionsPos = uint16(t.InteractionPos())
