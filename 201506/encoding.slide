@@ -597,6 +597,7 @@ A custom binary package to support low level stuff (flatbuffers does the same)
 - Bounds checking not handled (insecure, etc)
 - Schema updates less graceful
 - Doesn't handle streams
+- Doesn't support other stuff (external packages come with lots of options)
 
 
 * Custom benchmarks
