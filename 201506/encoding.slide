@@ -10,20 +10,24 @@ https://www.sajari.com
 @hamishogilvy
 
 
-* Why we binary encode?
-- Work with data sets larger than available memory (mmap)
-- Reduce GC pause for large data sets
-- Save and read structured data direct to/from disk (at close to RAM speed)
+* What is binary encoding?
 
-e.g. 
-
-	type Whatever struct {
+	type SomeData struct {
 		...
 	}
+	sd := &SomeData{}
 
-convert to:
+	// convert sd to []byte
+	// convert []byte to sd
 
-	[]byte
+e.g. create and interpret sequences of bytes in standardized ways
+
+
+* Why we binary encode?
+- Work with data sets larger than available memory (mmap)
+- Reduce GC pause for large data sets (10's to 100's of GB)
+- Save and read data direct to/from disk (at close to RAM speed)
+
 
 
 * Our binary encoding goals (not for everyone!)
@@ -58,6 +62,8 @@ convert to:
 - Compiled & Zero copy packages
 - Roll our own
 
+More about each option later...
+
 
 * Use case
 - Find documents with greatest cosine similarity in 500k document set
@@ -72,7 +78,7 @@ convert to:
 
 ~ 1.75 million records to read in 100 msec. Requires:
 60 nsec / read (1 CPU)
-460 nsec / read (8 CPU)
+60 * 8 = 480 nsec / read (8 CPU)
 
 Faster decoding, more CPU's, or read less stuff?
 - Already read less where possible 
@@ -441,7 +447,7 @@ Flatbuffers is faster for full encode/decode
 
 - Code is really complicated for nested structs. Boilerplate doesn't handle this. 
 - Bottom up style loading, leaf nodes built first, etc. Opposite of normal thinking
-- Difficult to find Golang examples currently 
+- Difficult to find advanced Golang examples with nested vectors, etc 
 - API will probably change, buffer re-use etc could be better
 
 But it is very very quick!
@@ -537,8 +543,8 @@ A custom binary package to support low level stuff (flatbuffers does the same)
 - Files storing the data are versioned, the package knows how to read each version
 
 	const (
-		FIXED_SIZE  = 22
-		REV_SLOT    = 0
+		FIXED_SIZE  = 22  // Initial fixed element allocation 
+		REV_SLOT    = 0 
 		NUM_DOCS    = 4
 		INTER_POS   = 8
 		INTER_NEG   = 10
@@ -547,8 +553,8 @@ A custom binary package to support low level stuff (flatbuffers does the same)
 		NUM_WORDS   = 17
 		NUM_SHOTGUN = 18
 		NUM_CLUES   = 19
-		LENGTH      = 20
-		STRING      = 22
+		LENGTH      = 20  // 0 - 21 all fixed length offsets
+		STRING      = 22  // 22 begins variable length offsets
 	)
 
 * Encode handles multiple versions
