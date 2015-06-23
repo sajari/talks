@@ -197,7 +197,6 @@ Other notes:
 - misleading use case for gob
 - missing capnproto (similar to flatbuffers)
 - features are different, benchmarks vary with use cases, do your own benchmarks
-- flatbuffers does zero allocations???
 
 * So back to our use case
 - We want speed so we'll focus on compiled encoders.
@@ -302,7 +301,7 @@ Slice of 1000x *Rev* struct
 Notes:
 - Boilerplate on boilerplate is annoying
 - Decode boilerplate uses bytes.Buffer, not efficient for small structs
-- Not the smartest way to use cap-n-proto, completely negates benefits of zero-copy
+- Not the smartest way to use cap-n-proto, completely negates benefits of zero-copy and streaming
 
 * Cap-n-proto zero copy
 - Give up your structs. Use the Cap-n-proto object instead
@@ -392,7 +391,7 @@ You can then compile your schema files
 
 	flatc -g term.fbs
 
-This generates Go code for you
+This generates Go code (some, but not all) for you
 
 	package sjfb
 
@@ -451,7 +450,7 @@ But it is very very quick!
 * Roll our own
 
 - Build specifically around our data structure
-- Allow for future changes, but handle globally at a storage, not message level
+- Allow for future changes, but handle globally at storage, not message level
 - Allow zero-copy style access, but also support full decode to Go structs
 - Support maps
 - Omit bounds checks, etc. Simplify as much as possible.
@@ -517,6 +516,20 @@ A custom binary package to support low level stuff (flatbuffers does the same)
 		}
 	}
 
+* Flexible Encoder interface
+- Storage package (mmap) only cares about binary 
+- Any item that can encode and decode can be added
+- We can change encoding anytime
+- Different items can use different encoding methods
+
+	type Encoder interface {
+		Encode(version string) []byte
+		Decode(version string, data []byte)
+	}
+
+
+
+
 * Each "message" is a package
 
 - The package defines the "table" equivalent for fixed size elements  (see below)
@@ -577,7 +590,7 @@ A custom binary package to support low level stuff (flatbuffers does the same)
 - Needs good tests (offsets are handcoded, not generated)
 - Bounds checking not handled (insecure, etc)
 - Schema updates less graceful
-- Doesn't handle streams (yet)
+- Doesn't handle streams
 
 
 * Custom benchmarks
@@ -616,10 +629,11 @@ Potential (single CPU) minimum close to 135 msec (~80 nsec average read)
 
 
 * Summary
-- Cap-n-proto well suited to streams. Fast decoding (zero-copy), moderate speed (other languages likely faster than Go implementation)
+- Cap-n-proto well suited to streams. Fast decoding (zero-copy), moderate speed (Go implementation could likely be faster)
 - Flatbuffers is amazingly fast. Super promising
 - Go libs and code generators add overhead and reduce performance
-- The lines of code required to write your own might be less than using a package
+- To get speed, you typically pay with code complexity
+- The lines of code required to write your own might even be less than using a package
 - Certain applications are better off writing their own binary encoder
 
 
