@@ -24,8 +24,8 @@ e.g. create and interpret sequences of bytes in standardized ways
 
 
 * Why we binary encode?
-- Work with data sets larger than available memory (mmap)
-- Reduce GC pause for large data sets (10's to 100's of GB)
+- Work with data sets larger than available memory (10's to 100's of GB)
+- Reduce GC pause for large data sets (mmap region is not garbage collected)
 - Save and read data direct to/from disk (at close to RAM speed)
 
 
@@ -73,7 +73,7 @@ More about each option later...
 .image images/vector-space.png 300 _
 
 * To achieve our goal:
-- Sample query reads ~1 million reverse indexes, 350k matching documents, 350k meta lookups
+- Sample query reads ~1 million reverse index records, 350k matching documents, 350k meta lookups
 - Data all stored in []byte mmap files
 
 ~ 1.75 million records to read in 100 msec. Requires:
@@ -196,8 +196,8 @@ Below benchmarks graciously compiled by @alecthomas
 - Compiled encoders easily outperform others
 - gogoprotobuf great encoding and decoding performance
 - flatbuffers easily fastest decoding (6x gogoprotobuf, but slower to encode)
-- gogoprotobuf ~11x faster to encode than encoding/binary
-- flatbuffers ~44x faster to decode than encoding/binary
+- gogoprotobuf ~11x faster to encode than Binary (extension of encoding/binary)
+- flatbuffers ~44x faster to decode than Binary (extension of encoding/binary)
 
 Other notes: 
 - misleading use case for gob
@@ -274,7 +274,7 @@ Produces your Go code...
 
 
 * Cap-n-proto schema auto generation using bambam
-To avoid departure from your original Go structs
+Custom schema generated from your Go structs
 
 [[https://github.com/glycerine/bambam][github.com/glycerine/bambam]]
 
@@ -329,8 +329,10 @@ Your data is essentially packed into the segments.
 * Cap-n-proto zero-copy performance
 Using our *Term* struct
 
-	BenchmarkCapNZeroEncodeTerm	   50000	     24138 ns/op	    8848 B/op	       6 allocs/op
-	BenchmarkCapNZeroDecodeTerm	 3000000	       641 ns/op	      88 B/op	       3 allocs/op
+	BenchmarkCapNEncodeTerm	   		50000	     24278 ns/op	    8848 B/op
+	BenchmarkCapNDecodeTerm	  		200000	     11857 ns/op	    2800 B/op
+	BenchmarkCapNZeroEncodeTerm	   	50000	     24138 ns/op	    8848 B/op	       6 allocs/op
+	BenchmarkCapNZeroDecodeTerm	 	3000000	       641 ns/op	      88 B/op	       3 allocs/op
 
 - Encoding struct --> []byte same performance
 - Decoding much faster (>20x), but you don't get your struct back, you get an object that wraps the []byte and a bunch of methods. e.g.
@@ -522,19 +524,6 @@ A custom binary package to support low level stuff (flatbuffers does the same)
 		}
 	}
 
-* Flexible Encoder interface
-- Storage package (mmap) only cares about binary 
-- Any item that can encode and decode can be added
-- We can change encoding anytime
-- Different items can use different encoding methods
-
-	type Encoder interface {
-		Encode(version string) []byte
-		Decode(version string, data []byte)
-	}
-
-
-
 
 * Each "message" is a package
 
@@ -583,6 +572,18 @@ A custom binary package to support low level stuff (flatbuffers does the same)
 			bin.WriteUint32(data[NUM_DOCS:], term.NumDocuments)
 			bin.WriteUint16(data[INTER_POS:], term.InteractionsPos)
 			bin.WriteUint16(data[INTER_NEG:], term.InteractionsNeg)
+
+* Flexible Encoder interface
+- Storage package (mmap) only cares about binary 
+- Any item that can encode and decode can be added
+- We can change encoding anytime
+- Different items can use different encoding methods
+
+	type Encoder interface {
+		Encode(version string) []byte
+		Decode(version string, data []byte)
+	}
+
 
 * Pros to this approach
 - Encoding happens inline (fast)
