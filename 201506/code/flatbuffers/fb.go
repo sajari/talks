@@ -1,8 +1,8 @@
 package main
 
 import (
-	"fmt"
-	flatbuffers "github.com/google/flatbuffers/go"
+	//"fmt"
+	flatbuffers "github.com/rw/flatbuffers/go"
 	"talks/201506/code/flatbuffers/sjfb"
 )
 
@@ -60,7 +60,7 @@ func (term *Term) Encode(version string) []byte {
 		shotguns[i] = sjfb.ShotgunEnd(builder)
 	}
 	sjfb.TermStartShotgunVector(builder, len(term.Shotgun))
-	for i := 0; i < len(term.Shotgun); i++ {
+	for i := len(term.Shotgun) - 1; i >= 0; i-- {
 		builder.PrependUOffsetT(shotguns[i])
 	}
 	shotgun_vec := builder.EndVector(len(term.Shotgun))
@@ -75,7 +75,7 @@ func (term *Term) Encode(version string) []byte {
 		clues[i] = sjfb.ClueEnd(builder)
 	}
 	sjfb.TermStartCluesVector(builder, len(term.Clues))
-	for i := 0; i < len(term.Clues); i++ {
+	for i := len(term.Clues) - 1; i >= 0; i-- {
 		builder.PrependUOffsetT(clues[i])
 	}
 	clues_vec := builder.EndVector(len(term.Clues))
@@ -110,18 +110,24 @@ func (term *Term) Decode(version string, data []byte) {
 	term.NumDocuments = t.NumDocuments()
 	term.NumWords = uint8(t.NumWords())
 
-	fmt.Println("LEN: ", t.ShotgunLength())
-	/*
-		term.Shotgun = make([]Shotgun, t.ShotgunLength())
-		shotvecs := make([]*sjfb.Shotgun, t.ShotgunLength())
-		for i := 0; i < t.ShotgunLength(); i++ {
-			if ok := t.Shotgun(shotvecs[i], i); ok {
-				term.Shotgun[i].Term = string(shotvecs[i].Term())
-				term.Shotgun[i].Potency = shotvecs[i].Potency()
-			}
+	term.Shotgun = make([]Shotgun, t.ShotgunLength())
+	shotvecs := make([]sjfb.Shotgun, t.ShotgunLength())
+	for i := 0; i < t.ShotgunLength(); i++ {
+		if ok := t.Shotgun(&shotvecs[i], i); ok {
+			term.Shotgun[i].Term = string(shotvecs[i].Term())
+			term.Shotgun[i].Potency = shotvecs[i].Potency()
 		}
-	*/
-	//term.Clues = t.Clues(obj, j)
+	}
+
+	term.Clues = make([]Clue, t.CluesLength())
+	cluesvecs := make([]sjfb.Clue, t.CluesLength())
+	for i := 0; i < t.CluesLength(); i++ {
+		if ok := t.Clues(&cluesvecs[i], i); ok {
+			term.Clues[i].Term = string(cluesvecs[i].Term())
+			term.Clues[i].Intro = string(cluesvecs[i].Intro())
+			term.Clues[i].Potency = cluesvecs[i].Potency()
+		}
+	}
 
 	term.InteractionsPos = uint16(t.InteractionPos())
 	term.InteractionsNeg = uint16(t.InteractionNeg())

@@ -3,8 +3,9 @@
 package sjfb
 
 import (
-	flatbuffers "github.com/google/flatbuffers/go"
+	flatbuffers "github.com/rw/flatbuffers/go"
 )
+
 type Term struct {
 	_tab flatbuffers.Table
 }
@@ -12,7 +13,7 @@ type Term struct {
 func GetRootAsTerm(buf []byte, offset flatbuffers.UOffsetT) *Term {
 	n := flatbuffers.GetUOffsetT(buf[offset:])
 	x := &Term{}
-	x.Init(buf, n + offset)
+	x.Init(buf, n+offset)
 	return x
 }
 
@@ -59,9 +60,9 @@ func (rcv *Term) Shotgun(obj *Shotgun, j int) bool {
 		x := rcv._tab.Vector(o)
 		x += flatbuffers.UOffsetT(j) * 4
 		x = rcv._tab.Indirect(x)
-	if obj == nil {
-		obj = new(Shotgun)
-	}
+		if obj == nil {
+			obj = new(Shotgun)
+		}
 		obj.Init(rcv._tab.Bytes, x)
 		return true
 	}
@@ -82,9 +83,9 @@ func (rcv *Term) Clues(obj *Clue, j int) bool {
 		x := rcv._tab.Vector(o)
 		x += flatbuffers.UOffsetT(j) * 4
 		x = rcv._tab.Indirect(x)
-	if obj == nil {
-		obj = new(Clue)
-	}
+		if obj == nil {
+			obj = new(Clue)
+		}
 		obj.Init(rcv._tab.Bytes, x)
 		return true
 	}
@@ -132,18 +133,38 @@ func (rcv *Term) Infogain() float32 {
 }
 
 func TermStart(builder *flatbuffers.Builder) { builder.StartObject(10) }
-func TermAddTermStr(builder *flatbuffers.Builder, TermStr flatbuffers.UOffsetT) { builder.PrependUOffsetTSlot(0, flatbuffers.UOffsetT(TermStr), 0) }
+func TermAddTermStr(builder *flatbuffers.Builder, TermStr flatbuffers.UOffsetT) {
+	builder.PrependUOffsetTSlot(0, flatbuffers.UOffsetT(TermStr), 0)
+}
 func TermAddSlot(builder *flatbuffers.Builder, Slot uint32) { builder.PrependUint32Slot(1, Slot, 0) }
-func TermAddNumDocuments(builder *flatbuffers.Builder, NumDocuments uint32) { builder.PrependUint32Slot(2, NumDocuments, 0) }
-func TermAddNumWords(builder *flatbuffers.Builder, NumWords int16) { builder.PrependInt16Slot(3, NumWords, 0) }
-func TermAddShotgun(builder *flatbuffers.Builder, Shotgun flatbuffers.UOffsetT) { builder.PrependUOffsetTSlot(4, flatbuffers.UOffsetT(Shotgun), 0) }
-func TermStartShotgunVector(builder *flatbuffers.Builder, numElems int) flatbuffers.UOffsetT { return builder.StartVector(4, numElems, 4)
+func TermAddNumDocuments(builder *flatbuffers.Builder, NumDocuments uint32) {
+	builder.PrependUint32Slot(2, NumDocuments, 0)
 }
-func TermAddClues(builder *flatbuffers.Builder, Clues flatbuffers.UOffsetT) { builder.PrependUOffsetTSlot(5, flatbuffers.UOffsetT(Clues), 0) }
-func TermStartCluesVector(builder *flatbuffers.Builder, numElems int) flatbuffers.UOffsetT { return builder.StartVector(4, numElems, 4)
+func TermAddNumWords(builder *flatbuffers.Builder, NumWords int16) {
+	builder.PrependInt16Slot(3, NumWords, 0)
 }
-func TermAddInteractionPos(builder *flatbuffers.Builder, InteractionPos int16) { builder.PrependInt16Slot(6, InteractionPos, 0) }
-func TermAddInteractionNeg(builder *flatbuffers.Builder, InteractionNeg int16) { builder.PrependInt16Slot(7, InteractionNeg, 0) }
-func TermAddHardcodedScore(builder *flatbuffers.Builder, HardcodedScore int16) { builder.PrependInt16Slot(8, HardcodedScore, 0) }
-func TermAddInfogain(builder *flatbuffers.Builder, Infogain float32) { builder.PrependFloat32Slot(9, Infogain, 0) }
+func TermAddShotgun(builder *flatbuffers.Builder, Shotgun flatbuffers.UOffsetT) {
+	builder.PrependUOffsetTSlot(4, flatbuffers.UOffsetT(Shotgun), 0)
+}
+func TermStartShotgunVector(builder *flatbuffers.Builder, numElems int) flatbuffers.UOffsetT {
+	return builder.StartVector(4, numElems, 4)
+}
+func TermAddClues(builder *flatbuffers.Builder, Clues flatbuffers.UOffsetT) {
+	builder.PrependUOffsetTSlot(5, flatbuffers.UOffsetT(Clues), 0)
+}
+func TermStartCluesVector(builder *flatbuffers.Builder, numElems int) flatbuffers.UOffsetT {
+	return builder.StartVector(4, numElems, 4)
+}
+func TermAddInteractionPos(builder *flatbuffers.Builder, InteractionPos int16) {
+	builder.PrependInt16Slot(6, InteractionPos, 0)
+}
+func TermAddInteractionNeg(builder *flatbuffers.Builder, InteractionNeg int16) {
+	builder.PrependInt16Slot(7, InteractionNeg, 0)
+}
+func TermAddHardcodedScore(builder *flatbuffers.Builder, HardcodedScore int16) {
+	builder.PrependInt16Slot(8, HardcodedScore, 0)
+}
+func TermAddInfogain(builder *flatbuffers.Builder, Infogain float32) {
+	builder.PrependFloat32Slot(9, Infogain, 0)
+}
 func TermEnd(builder *flatbuffers.Builder) flatbuffers.UOffsetT { return builder.EndObject() }

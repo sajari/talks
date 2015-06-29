@@ -140,16 +140,16 @@ func TestEncodeTerm(t *testing.T) {
 			t.Errorf("Failed to encode and decode doc Shotgun potency. Got %v, expected %v", term2.Shotgun[1].Potency, term.Shotgun[1].Potency)
 		}
 	}
-	/*
-		// Clues
-		if term.Clues[1].Term != term2.Clues[1].Term {
-			t.Errorf("Failed to encode and decode doc Clue term. Got %v, expected %v", term2.Clues[1].Term, term.Clues[1].Term)
-		}
-		if term.Clues[1].Intro != term2.Clues[1].Intro {
-			t.Errorf("Failed to encode and decode doc Clue intro. Got %v, expected %v", term2.Clues[1].Intro, term.Clues[1].Intro)
-		}
-		if term.Clues[1].Potency != term2.Clues[1].Potency {
-			t.Errorf("Failed to encode and decode doc Clue potency. Got %v, expected %v", term2.Clues[1].Potency, term.Clues[1].Potency)
-		}
-	*/
+
+	// Clues
+	if term.Clues[1].Term != term2.Clues[1].Term {
+		t.Errorf("Failed to encode and decode doc Clue term. Got %v, expected %v", term2.Clues[1].Term, term.Clues[1].Term)
+	}
+	if term.Clues[1].Intro != term2.Clues[1].Intro {
+		t.Errorf("Failed to encode and decode doc Clue intro. Got %v, expected %v", term2.Clues[1].Intro, term.Clues[1].Intro)
+	}
+	if term.Clues[1].Potency != term2.Clues[1].Potency {
+		t.Errorf("Failed to encode and decode doc Clue potency. Got %v, expected %v", term2.Clues[1].Potency, term.Clues[1].Potency)
+	}
+
 }
