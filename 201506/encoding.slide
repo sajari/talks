@@ -9,6 +9,24 @@ hogilvy@sajari.com
 https://www.sajari.com
 @hamishogilvy
 
+* Background
+Sajari is a full text search, match and recommendations engine designed for larger queries, e.g. using documents or objects as queries
+
+Design challenges:
+- Large queries are very rarely the same (caching is not helpful)
+- Union of many indexes often requires *millions* of reads per query
+- Goal of 100 msec max query latency
+- Index sizes can be greater than available RAM
+
+Very challenging IO requirements.
+
+
+* Why we binary encode?
+- MMap - Support index sizes much greater than available memory (100's of GB)
+- Reduce GC pause for large data sets (mmap region is not garbage collected)
+- Save and read data direct to/from disk (at close to RAM speed)
+- Allow OS to manage disk to memory IO (hot/cold indexes)
+
 
 * What is binary encoding?
 
@@ -21,14 +39,6 @@ https://www.sajari.com
 	// convert []byte to sd
 
 e.g. create and interpret sequences of bytes in standardized ways
-
-
-* Why we binary encode?
-- Work with data sets larger than available memory (10's to 100's of GB)
-- Reduce GC pause for large data sets (mmap region is not garbage collected)
-- Save and read data direct to/from disk (at close to RAM speed)
-
-
 
 * Our binary encoding goals (not for everyone!)
 - Fast
@@ -51,7 +61,7 @@ e.g. create and interpret sequences of bytes in standardized ways
 - Standards
 - Self-describing
 - Variable data structures
-- Security
+- Security (internal use only, no RPC, etc)
 - Compression
 - Sending over the wire
 
@@ -431,18 +441,22 @@ This generates Go code (some, but not all) for you
 	}	
 
 * Flatbuffers benchmarks full encode/decode
-Using simple *Term* struct (e.g. no nested structs)
+Using *Term* struct (e.g. simple omits the nested structs)
 
-	BenchmarkFBEncodeSimpleTerm	  300000	      3976 ns/op	     584 B/op	      13 allocs/op
-	BenchmarkFBDecodeSimpleTerm	 2000000	       743 ns/op	      48 B/op	       1 allocs/op
+	BenchmarkFBEncodeSimpleTerm	  		300000	      3976 ns/op	     584 B/op	      13 allocs/op
+	BenchmarkFBDecodeSimpleTerm	 		2000000	       743 ns/op	      48 B/op	       1 allocs/op
+	BenchmarkFlatbuffersEncodeTerm	  	100000	     12882 ns/op	    1800 B/op	      24 allocs/op
+	BenchmarkFlatbuffersDecodeTerm	  	300000	      4695 ns/op	     384 B/op	      12 allocs/op
 
 vs Cap-n-proto 
 
-	BenchmarkCapNEncodeSimpleTerm	  100000	     21845 ns/op	    8608 B/op	       6 allocs/op
-	BenchmarkCapNDecodeSimpleTerm	  200000	      8735 ns/op	    2464 B/op	       9 allocs/op
+	BenchmarkCapNEncodeTerm	   			50000	     24278 ns/op	    8848 B/op
+	BenchmarkCapNDecodeTerm	  			200000	     11857 ns/op	    2800 B/op
+	BenchmarkCapNEncodeSimpleTerm	  	100000	     21845 ns/op	    8608 B/op	       6 allocs/op
+	BenchmarkCapNDecodeSimpleTerm	  	200000	      8735 ns/op	    2464 B/op	       9 allocs/op
 
 
-Flatbuffers is faster for full encode/decode
+Flatbuffers is ~2x faster for full encode/decode
 
 
 * Flatbuffers downsides
@@ -608,14 +622,14 @@ A custom binary package to support low level stuff (flatbuffers does the same)
 	BenchmarkEncodeSimpleTerm	2000000	       663 ns/op	     128 B/op	       2 allocs/op
 	BenchmarkDecodeSimpleTerm	5000000	       275 ns/op	      48 B/op	       1 allocs/op
 
-- 6x faster full encoding than flatbuffers
+- 9x faster full encoding than flatbuffers
 - 3x faster full decoding than flatbuffers
 
 * Compare packing size
 
 	custom: 		 140 bytes (full Term) and 68 bytes (simple Term) 
 	cap-n-proto: 	360 bytes (full Term) and 112 bytes (simple Term)  
-	flatbuffers: 	??? bytes (full Term) and 128 bytes (simple Term)
+	flatbuffers: 	304 bytes (full Term) and 128 bytes (simple Term)
 
 - We can easily save space as we only encode what we need.
 
@@ -638,7 +652,7 @@ Potential (single CPU) minimum close to 135 msec (~80 nsec average read)
 
 * Summary
 - Cap-n-proto well suited to streams. Fast decoding (zero-copy), moderate speed (Go implementation could likely be faster)
-- Flatbuffers is amazingly fast. Super promising
+- Flatbuffers is very fast. Super promising
 - Go libs and code generators add overhead and reduce performance
 - To get speed, you typically pay with code complexity
 - The lines of code required to write your own might even be less than using a package
