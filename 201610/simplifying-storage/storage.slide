@@ -1,0 +1,299 @@
+Simplifying Storage
+18:30 13 Oct 2016
+
+David Howden
+Software Engineer, Sajari
+https://github.com/sajari
+@dhowden
+
+* About Sajari
+
+- Start up based in Sydney.
+- Develop machine-learning based search technology.
+- All built in-house, right down to the binary encoding of data on disk.
+- Different approach to Lucene-based search systems (Elastic Search, Solr, and others).
+- Cross-platform: Google Cloud Platform and Amazon Web Services.
+- Main systems built to run in Kubernetes-style environment.
+
+* About Sajari
+
+Supports standard search features:
+
+- Keyword queries: *go* *meetup*.
+- Locality (prioritise "things near me").
+- Boost more _recent_ or _popular_ items.
+- etc…
+
+But also:
+
+- Ranking algorithm optimises at an individual search level.
+- Feature extraction for queries and documents.
+
+* Feature extraction
+
+We have lots of tools to improve and augment both queries and documents:
+
+- Spelling correction and autocomplete.
+- Synonyms (predefined and model-based): *iot* → *internet* *of* *things*.
+- Classification into categories: support, product, event, etc…
+- Standard metadata detectors: locations, dates, names, …
+- HTML parsing: OpenGraph tags, metadata tags, …
+- Document vector representations.
+
+* Why storage?
+
+Throughout our systems we had lots of code interacting with files.
+
+Reading data from local files, blob stores, S3, Google Cloud Storage…
+
+Inconsistent implementations are difficult to test.
+
+Logic/workflow from different providers and libraries was baked into our systems.
+
+* Standardised Storage Layer
+
+Needs to be simple, flexible and powerful.
+
+- Easy to code.
+- Simple to test.
+- Seamlessly switch from prototype/dev/testing/prod.
+- Work with local, AWS S3, Google Cloud Storage, …
+- Easily to add more storage providers.
+
+* Example: Local
+
+.code read-from-local.go
+
+* Example: Google Cloud Storage
+
+.code read-from-gcs.go
+
+* Example: Amazon S3
+
+.code read-from-s3.go
+
+* Observation
+
+- In each implementation we create an `io.ReadCloser` as an intermediary.
+
+* Generalise!
+
+We can define an interface:
+
+.code fs-open.go
+
+* Local
+
+.code local-fs.go
+
+Open */tmp/somepath/somefile.dat*
+
+.code use-local-fs.go
+
+* Google Cloud Storage: Implementation
+
+.code gcs-fs.go
+
+Open *gs://my-bucket/somepath/somefile.dat*
+
+.code gcs-usage-fs.go
+
+* Amazon S3: Implementation
+
+.code s3-fs.go
+
+Open *s3://my-bucket/somepath/somefile.dat*
+
+.code s3-usage-fs.go
+
+* ReadFile from anywhere!
+
+Now we can implement one method
+
+.code read-from-fs.go
+
+… and we can interchange any implementation.
+
+.code all-from-fs.go
+
+* A problem
+
+Each implementation is giving back its own errors.
+
+* Simplifying error handling
+
+We should define some standard errors.
+
+Implementations of FS can then introspect the errors from platform-specific SDKs and convert them into standardised ones.
+
+.code errors-fs.go
+
+* Testing
+
+We now only need to write one set of tests for each FS implementation.
+
+Must check that they return the standardised errors correctly.
+
+What about testing programs that take an FS implementation?
+
+* In-memory file system
+
+.code mem-fs.go
+
+Usage:
+
+.code mem-fs-usage-fs.go
+
+* What next?
+
+We have an interface.
+
+Let's put it to work!
+
+* Wrapping Multiple Systems
+
+Suppose we have a set of files we want to use and they are stored in multiple places (i.e. for redundancy or reducing latency).
+
+* MultiFS
+
+.code multi-fs.go
+
+* MultiFS
+
+We can now create a `MultiFS`:
+
+.code use-multi-fs.go
+
+But what if the source of the file is actually a web server?
+
+* Why not implement FS for HTTP?
+
+Let's quickly write it:
+
+.code http-fs.go
+
+* MultiFS
+
+Now we can add it into the list:
+
+.code use-multi-fs2.go
+
+* Retrying on temporary failures
+
+The error `ErrUnavailable` infers that the caller should try again (after a suitable interval).
+
+Let's write a wrapper which will retry any `Open` call `N` times when `ErrUnavailable` is returned.
+
+* RetryFS
+
+.code retry-fs.go
+
+* RetryFS
+
+.code use-multi-fs2-retry.go
+
+* Namespacing
+
+We often need to split filesystems into distinct parts:
+
+- Multiple processes use the same paths.
+- Multiple users share the same paths. 
+
+End up passing lots of paths around in programs.
+
+* PrefixFS
+
+PrefixFS allows you to move the root of any FS.
+
+.code prefix-fs.go
+
+Now we can bake namespaces into the file system itself.
+
+.code prefix-usage-fs.go
+
+* Demo
+
+Serve files through an HTTP server.
+
+    $ curl localhost:7777 -d '{"path":"some-path.txt"}' -D -
+
+Setup an FS implementation and go!
+
+.play -edit demo/main.go /START OMIT/,/END OMIT/
+
+* Debugging & Tracing
+
+.image everywhere.jpg
+
+* Debugging & Tracing
+
+Record file-system calls and errors without putting log statements throughout our code.
+
+Use `golang.org/x/net/trace` pkg to track progress of recent calls.
+
+Use `expvar` pkg to report live usage stats.
+
+* Logging
+
+.code log-fs.go
+
+* Tracing
+
+.code trace-fs.go
+
+* Counting Stats
+
+.code statcount-fs-expvar.go
+
+* Demo
+
+.play -edit demo/main2.go /START OMIT/,/END OMIT/
+
+* Demo: Debugging URLs
+
+Tracing (`golang.org/x/net/trace`)
+
+.link http://localhost:7778/debug/requests
+
+Vars (`expvar`)
+
+.link http://localhost:7778/debug/vars
+
+* Summary
+
+- Logging
+- Tracing
+- Stat-counting
+- Retrying
+- Namespacing
+- Multi-fetching
+- Multi-platform (GCS, S3, HTTP, local, memory…)
+
+And still only one method:
+
+    Open(path string) (io.ReadCloser, error)
+
+* github.com/sajari/storage
+
+Also includes:
+
+- Writing and deleting:
+
+.code fs-create-fs.go
+
+- Cache wrapper.
+- Content addressable wrapper.
+
+* Conclusion
+
+Interfaces are awesome.
+
+- Simple way to create reusable building blocks.
+
+If you find yourself repeating the same patterns, there's probably a better way to do it.
+
+* Links
+
+Storage pkg implementing some of these ideas is available on Github:
+
+.link http://github.com/sajari/storage

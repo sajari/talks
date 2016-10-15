@@ -1,0 +1,1 @@
+fs, err := CloudStorage("my-bucket").Open("somepath/somefile.dat")
