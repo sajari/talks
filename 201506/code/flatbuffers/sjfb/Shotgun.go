@@ -3,7 +3,7 @@
 package sjfb
 
 import (
-	flatbuffers "github.com/rw/flatbuffers/go"
+	flatbuffers "github.com/google/flatbuffers/go"
 )
 
 type Shotgun struct {

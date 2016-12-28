@@ -2,8 +2,9 @@ package main
 
 import (
 	//"fmt"
-	flatbuffers "github.com/rw/flatbuffers/go"
 	"talks/201506/code/flatbuffers/sjfb"
+
+	flatbuffers "github.com/google/flatbuffers/go"
 )
 
 /*
