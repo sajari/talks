@@ -1,0 +1,307 @@
+Data Science using Go
+Random thoughts and experiments
+20 Apr 2016
+
+
+Hamish Ogilvy
+Founder, Sajari
+hogilvy@sajari.com
+https://www.sajari.com
+@sajari
+
+* Background
+- Why use Go for data science
+- Tradeoffs and lessons
+- Some fun and examples
+
+* About us
+- Search & matching engine written 100% in Go
+- Search is a tough problem
+- Machine learning is useful for *understanding* *text*
+- Machine learning is useful for *ranking* *information*
+
+.image img/query-understanding.png 350 _
+
+* Why use Go for data science?
+- Speed: static typing and concurrency
+- Scalability: well suited to distributed computing 
+- Text: great encoding / parsing / streaming support
+- Service: easy to embed models into services
+- Deployment: from scratch Docker container only ~ 15 MB
+
+	FROM scratch
+	EXPOSE 1234
+	COPY my-program /
+	ENTRYPOINT ["/my-program", "-listen", ":1234"]
+
+* Why not use Go for data science?
+- Libraries: long way behind compared to Python, R, etc
+- Speed: can offload heavy lifting to BLAS in higher level languages
+- Unknowns: most pkgs are not written in performant Go
+
+* What we've learnt about using Go for data science
+- Highly repeatable and performant
+- Very well suited to deploying in containers
+- Lib support improving rapidly
+- Great potential, but needs more people working on it
+
+* Combining ML components 
+- Create *features* from unstructured data
+- Use features as *ranking* algorithm inputs 
+- Label results to train model (performance or human curated data)
+
+.image img/pipelines.png _ 950
+
+
+* Example: Naive Bayes
+- Used for classification, e.g. spam prediction
+- Not just for text, anything with probabilities
+- Very fast, very simple, reasonable accuracy
+- Support iterative training updates
+- Handles small / missing data well
+
+.image img/naive-bayes.png 300 _
+ 
+* Downsides of Naive Bayes:
+- Bag of words model, can lose context
+- Assumes features are independent
+- Can favour popular classes
+
+* Example: Naive Bayes
+- Create classes, add strings to the classes
+- Probability calculated for you
+
+	import "github.com/jbrukh/bayesian"
+
+	const (
+	    Good Class = "Good"
+	    Bad Class = "Bad"
+	)
+
+	classifier := bayesian.NewClassifier(Good, Bad)
+	goodStuff := []string{"tall", "rich", "handsome"}
+	badStuff  := []string{"poor", "smelly", "ugly"}
+	classifier.Learn(goodStuff, Good)
+	classifier.Learn(badStuff,  Bad)
+
+	probs, likely, strict := classifier.ProbScores([]string{"tall", "girl"})
+
+* Use cases: Naive Bayes
+- Categorise information: e.g. support vs product queries
+- Predict usefulness of text: e.g. remove unrelated paragraphs
+- Use predicted classes as an input features for search ranking
+
+
+* Word2Vec
+- Vectorise words
+- Retains the contextual meaning of the words mathematically
+- Similar meaning words have similar vectors
+- Meaning of words can be added / subtracted
+
+.image img/word2vec.png 300 _
+
+* Word2Vec using Go
+Option 1: generate and query in Go: 
+
+[[https://github.com/ynqa/word-embedding]]
+
+Option 2: generate in C and query in Go
+
+[[https://code.google.com/archive/p/word2vec/]]
+[[https://github.com/sajari/word2vec]]
+
+We chose option 2
+
+* Word2Vec using Go
+Generate a model:
+
+	$ wget https://storage.googleapis.com/google-code-archive-source/v2/code.google.com/
+	word2vec/source-archive.zip && unzip source-archive.zip
+
+	$ cd word2vec
+	
+	$ word2vec -train input.txt -output vectors.bin -cbow 0 -size 2 -window 5 -binary 1 -min-count 3
+
+Note: input.txt is split on spaces, you will need to pre-process your text
+
+* Word2Vec using Go: imported
+Query the model:
+
+		$ go get github.com/sajari/word2vec/...
+
+Load the model from an io.Reader (i.e. a file):
+
+	model, err := word2vec.FromReader(r)
+
+Create an expression:
+
+	expr := word2vec.Expr{}
+	expr.Add(1, "king")
+	expr.Add(-1, "man")
+	expr.Add(1, "woman")
+
+Find the N most similar result (cosine similarity):
+
+	matches, err := model.CosN(expr, N)
+
+* Word2Vec using Go: server-client
+Models can be large (GB). We don't want to load for every query
+
+Start a server:
+
+	word-server -model your-model.bin -listen localhost:1234
+
+Query a server (command line):
+
+	word-client -sim -n 50 -addA golang,data,science
+
+Query a server (code):
+
+	c := word2vec.Client{Addr: addr}
+	res, err := c.CosN(expr, n)
+
+* Word2Vec: demos
+- Similarity
+- Phrase similarity
+- Context subtraction
+- Categorisation
+
+Used 50GB of resumes as training data. Model size ~100MB
+
+
+* Word2Vec: pre-processing (the secret to good models)
+- Remove punctuation
+- Lower case
+- Connect relevant multi-word phrases
+- Pad in between docs (>= the window size)
+
+	type MapFn func(rune) rune
+
+	type mapReader struct {
+		io.Reader
+
+		m MapFn
+	}
+
+
+* Word2Vec: multi-word phrases
+- "java": the language or the coffee?
+- "developer": property or software?
+- "java developer": obvious meaning
+- When words combine the vectors blur, more words = more blur
+
+Collapse phrases where relevant:
+
+	"java developer" > "java_developer"
+
+
+* Doc2Vec: Expanding to document vectors
+- Add all the word vectors together
+- Normalise using inverse word frequency (omits stop words like "the", "and", etc)
+
+
+This creates a document vector representing the contents. 
+
+- Doc2Vec vector dimensions in the hundreds (*dense*)
+- Term-document vector dimensions is in the millions (*sparse*)
+
+
+* Combining Bayes and Word2Vec features
+- Take document pairs and compute features
+- Feed features into a model to produce a match score: A -> B = X
+- How well can we predict the labelled score?
+
+Examples: 
+- For a job description, sort application resumes in order of suitability
+
+
+.image img/match-data.png 300 _
+
+
+* Multivariable Regression
+- Looks for coefficients to provide a linear solution with the least error
+- Coefficients show which variables are valuable
+
+	package main
+
+	import (
+		"fmt"
+
+		"github.com/sajari/regression"
+	)
+
+	func main() {
+		r := new(regression.Regression)
+		r.SetObserved("Murders per annum per 1,000,000 inhabitants")
+		r.SetVar(0, "Inhabitants")
+		r.SetVar(1, "Percent with incomes below $5000")
+		r.SetVar(2, "Percent unemployed")
+		r.Train(
+			regression.DataPoint(11.2, []float64{587000, 16.5, 6.2}),
+			regression.DataPoint(13.4, []float64{643000, 20.5, 6.4}),
+			regression.DataPoint(40.7, []float64{635000, 26.3, 9.3}),
+
+* Multivariable Regression: results
+- Prediction is ok, but noisy.
+- R^2 measures the error, closer to 1 is better
+- For our jobs example:
+
+	Predicted = 10.71 + Raw Score*226.29 + Input Terms*0.00 + Reference Terms*-0.00 
+	+ bayes-job-salary*6.24 + exSummary*164.24 + exDate*-0.00 + bayes-job-skill-level*4.63 
+	+ bayes-industry*5.61 + state*2.92 + skills*41.61 + w2v-0*-40.10 + w2v-1*-19.72 
+	+ w2v-2*162.14 + w2v-3*23.24 + w2v-4*30.32 + w2v-5*6.51 + w2v-6*-32.59 + w2v-7*23.60 
+	+ w2v-8*-123.15 + w2v-9*78.73 + w2v-10*21.01 + w2v-11*30.62 + w2v-12*37.79 + w2v-13*83.45 
+	+ w2v-14*-155.04 + w2v-15*123.08 + w2v-16*-28.20 + w2v-17*-12.48 + w2v-18*-91.70 
+	+ w2v-19*-60.49 + w2v-20*14.07 + w2v-21*-92.49 + w2v-22*-51.01 + w2v-23*23.36 + w2v-24*-30.01
+
+	...
+
+R^2 = 0.4083
+
+* Random Forest
+- Creates multiple decision trees then uses the mode to predict the class
+- Until recently one of the premier algorithms on Kaggle, etc
+- Simple version: [[github.com/fxsjy/RF.go]]
+- Configurable version: [[github.com/ryanbressler/CloudForest]]
+
+.image img/random-forest.png 300 _
+
+* Random Forest implementation
+- More trees generally more accurate, but slower
+
+	func BuildForest(inputs [][]interface{}, labels []string, treesAmount, samplesAmount, selectedFeatureAmount int) *Forest{
+
+Build a forest: 
+
+	forest := &RF.Forest{}
+	forest = RF.BuildForest(rfinputs, rftargets, 200, 180, len(rfinputs[0]))
+
+Predict the test split accuracy:
+
+	err_count := 0.0
+	for i := 0; i < len(rfinputs_test); i++ {
+		output := forest.Predict(rfinputs_test[i])
+		expect := rftargets_test[i]
+		fmt.Printf("Result: %v\tExpected: %v\n", output, expect)
+		if output != expect {
+			err_count += 1
+		}
+	}
+
+* Random Forest: results
+- Bucket score into 4 groups: "poor", "average", "good", "great"
+- Predict bucket instead of score. 
+- Error indicates the forest predicted the wrong bucket
+
+	Random Forest success rate:  72%
+
+- Most errors are neighbouring buckets, e.g. great->good, poor->average
+- Can algorithmically replicate a human decision ~ 3/4 of the time
+- Highly unlikely to see "great" predicted as "poor". 
+- Great first pass filter, _humans_are_biased_and_can't_agree_anyway_
+
+* Conclusion and next steps
+- Go is a great language for data science
+- The library support pace is accelerating
+- Next up: Tensorflow, Deep Forests, etc
+
