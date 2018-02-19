@@ -1,5 +1,4 @@
-# talks
-Sajari presentations
+# Sajari presentations
 
 Switching everything to Go
 https://go-talks.appspot.com/github.com/sajari/talks/201405/golang-sydney.slide
